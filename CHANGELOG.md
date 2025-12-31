@@ -2,6 +2,20 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.3.3] - 2025-12-31
+
+> **Special Thanks**: [@jianfulin](https://github.com/jianfulin) for the major contribution! 🎉
+
+### Added
+
+- **Configurable Confirmation Dialogs**: New setting `virtualTabs.confirmBeforeDelete` to control whether confirmation dialogs appear before deleting groups or files (default: enabled).
+- Confirmation messages now support internationalization (i18n) for English, Traditional Chinese, and Simplified Chinese.
+
+### Changed
+
+- Refactored confirmation logic into reusable `executeWithConfirmation` utility function in `util.ts`.
+- Improved user experience with modal confirmation dialogs for delete operations.
+
 ## [0.3.2] - 2025-12-21
 
 > **Special Thanks**: [@jianfulin](https://github.com/jianfulin) for the major contribution! 🎉

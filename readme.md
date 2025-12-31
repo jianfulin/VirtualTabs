@@ -41,82 +41,21 @@ VirtualTabs is a **logical file organizer** for VS Code that lets you group rela
 
 ---
 
-## 🚀 What's New in v0.3.2
+## ⚡ Latest Highlights
 
-![v0.3.2 Features](assets/feature_032_preview.png)
+![Latest Features](assets/feature_032_preview.png)
 
-- **Run Scripts Directly**: `.bat` and `.exe` files now have a dedicated inline "Run" button.
-- **Organize Better**: Reorder your groups via the context menu to keep priorities sorted.
-- **Share with Team**: Your groups are now saved in `.vscode/virtualTab.json`, making it easy to commit and share configuration with your team.
+**v0.3.3** enhances user experience:
 
-## 🆕 What's New in v0.3.0
+- ⚙️ **Configurable Confirmations** — Control delete confirmation dialogs via settings
+- 🌍 **Better i18n** — Confirmation messages now fully localized
+- 🔧 **Code Quality** — Refactored confirmation logic for maintainability
 
-### 📂 Sub-Groups & Nested Structure
+**v0.3.2** brought productivity boosters:
 
-Create hierarchical group structures for better organization:
-
-![Nested Groups Demo](assets/nested_groups_demo.png)
-
-- **Add Sub-Groups**: Right-click any group → "Add Sub-Group"
-- **Drag to Nest**: Drag a group onto another to create nesting
-- **Drag to Root**: Drag to empty space to un-nest
-- **Recursive Delete**: Deleting a parent removes all children
-
-### 🤖 AI Context Export
-
-Export your file groups as AI-ready context with one click:
-
-![AI Context Demo](assets/ai_context_demo.png)
-
-**Copy Context for AI** generates beautifully formatted markdown:
-
-```text
-Context from Group: Feature Auth
-
-## File: src/auth.service.ts
-export class AuthService {
-  async login(credentials) {
-    const user = await this.validateUser(credentials);
-    return this.generateToken(user);
-  }
-}
-
-## File: src/auth.controller.ts
-@Post('login')
-async login(@Body() dto) {
-  return this.authService.login(dto);
-}
-```
-
-**Smart Features:**
-
-- Skips binary files automatically
-- Opens in editor if content > 50KB
-- Shows progress for large groups
-- Includes all sub-group files recursively
-
-### 📋 Unified Copy Menu
-
-All copy operations in one convenient submenu:
-
-![Copy Menu Demo](assets/copy_menu_demo.png)
-
-| Command | On Group | On File |
-|---------|----------|---------|
-| **Copy Context for AI** | All files (recursive) | Single file content |
-| **Copy File Name** | All file names | Single file name |
-| **Copy Relative Path** | All paths | Single path |
-| **Copy Absolute Path** | All paths | Single path |
-
-### 📁 Directory Drag & Drop
-
-Drag folders directly from Explorer to add all files:
-
-![Drag Drop Demo](assets/drag_drop_demo.png)
-
-- Automatically detects directories
-- Recursively adds all nested files
-- Skips the directory entry itself
+- 🎯 **Run Scripts Inline** — Execute `.bat` and `.exe` files with one click
+- ⇵ **Reorder Groups** — Move groups up/down to prioritize your workflow
+- 💾 **Team Sharing** — Config now saved in `.vscode/virtualTab.json`
 
 ---
 
@@ -143,12 +82,16 @@ Drag folders directly from Explorer to add all files:
 - Name your group (e.g., "AI Context", "Feature: Auth", "Bug Fix #123")
 - Right-click any group → **Add Sub-Group** for nested organization
 
+![Nested Groups](assets/nested_groups_demo.png)
+
 #### Adding Files
 
 - **Drag & Drop Files**: Drag files from Explorer into a group
 - **Drag & Drop Folders**: Drag folders to add all files recursively (v0.3.0)
 - **Multi-select**: Hold `Ctrl` (or `Cmd`) and click files, then drag together
 - **Currently Open**: The built-in group auto-syncs with your open tabs
+
+![Drag & Drop Demo](assets/drag_drop_demo.png)
 
 #### Using Bookmarks (v0.2.0)
 
@@ -159,9 +102,23 @@ Drag folders directly from Explorer to add all files:
 
 #### AI Context Export (v0.3.0)
 
+![AI Context Export](assets/ai_context_demo.png)
+
 1. Right-click a group → **Copy...** → **Copy Context for AI**
 2. Paste directly into ChatGPT, Claude, or any LLM
 3. All files are formatted with proper code blocks
+
+**Unified Copy Menu:**
+
+![Copy Menu Options](assets/copy_menu_demo.png)
+
+All copy operations are available in one convenient submenu, with smart behavior for both groups and files.
+
+**Smart Features:**
+
+- Skips binary files automatically
+- Opens in editor if content > 50KB
+- Includes all sub-group files recursively
 
 #### Sorting Files (v0.1.0)
 
@@ -216,62 +173,6 @@ In large projects, related files are scattered across directories:
 - **AI Context Curation**: Build precise file sets for LLMs with one-click export
 - **Code Review**: Centralize files for review efficiency
 - **Teaching & Reference**: Create curated examples without folder interference
-
----
-
-## 📸 Features in Detail
-
-### 📁 Group Management
-
-- Create, delete, rename, and duplicate custom groups
-- **Sub-groups** for hierarchical organization (v0.3.0)
-- Built-in **"Currently Open Files"** group (auto-syncs with VS Code tabs)
-- Drag and drop files into or between groups
-- Drag folders to add all files recursively (v0.3.0)
-- Each group is independent and persistent
-
-### 🔖 Task-Oriented Bookmarks (v0.2.0)
-
-- **Smart Flow**: Right-click any line → instant bookmark creation
-- **Context-Aware**: Bookmarks are tied to your groups
-- **Quick Navigation**: Jump to specific lines directly from the sidebar
-- **Smart Labeling**: Auto-uses line content or selection as label
-
-![Bookmarks Feature](assets/bookmarks_feature.png)
-
-### 🤖 AI Integration (v0.3.0)
-
-- **Copy Context for AI**: Export all files as markdown code blocks
-- **Smart Binary Detection**: Automatically skips images, archives, etc.
-- **Large File Handling**: Opens in editor if content exceeds 50KB
-- **Recursive Export**: Includes all files from sub-groups
-
-### 📊 Smart Organization (v0.1.0)
-
-**Auto-Group by Extension:**
-
-- Right-click group → **Auto Group by Extension**
-- Creates sub-groups: `.js`, `.css`, `.json`, etc.
-
-**Auto-Group by Date:**
-
-- Right-click group → **Auto Group by Modified Date**
-- Creates sub-groups: Today, Yesterday, This Week, This Month, Older
-
-**Flexible Sorting:**
-
-- Sort by: Name (A-Z), Path, Extension, Modified Time
-- Toggle ascending/descending
-- Clear sorting to restore insertion order
-
-### 🛠️ Utilities
-
-- **Copy Menu** with unified options for files and groups
-- Copy filename, relative path, or absolute path
-- Open containing folder
-- Multi-file batch operations (open/close/remove)
-- Copy/Paste files between groups (v0.3.0)
-- Auto-save group state (persisted in `workspaceState`)
 
 ---
 
@@ -371,7 +272,13 @@ Together, they create the ultimate AI-coding workflow.
 
 ## 📅 Changelog
 
-### ✅ v0.3.2 (Latest)
+### ✅ v0.3.3 (Latest)
+
+- ✅ Configurable confirmation dialogs for delete operations
+- ✅ Internationalized confirmation messages (EN/ZH-TW/ZH-CN)
+- ✅ Refactored confirmation logic into reusable utility
+
+### ✅ v0.3.2
 
 - ✅ Inline Run button for scripts (.bat/.exe)
 - ✅ Group Reordering (Move Up/Down)

@@ -4,6 +4,7 @@ import { TempFileItem, TempFolderItem, BookmarkItem } from './treeItems';
 import { I18n } from './i18n';
 import { BookmarkManager } from './bookmarks';
 import { TempGroup } from './types';
+import { executeWithConfirmation } from './util';
 
 // Global clipboard for VirtualTabs items
 let globalClipboardItems: (TempFileItem | TempFolderItem)[] = [];
@@ -266,9 +267,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
         if (itemsToRemove.length === 0) return;
 
-        // Check user preference for confirmation
-        const config = vscode.workspace.getConfiguration('virtualTabs');
-        const confirmBeforeDelete = config.get<boolean>('confirmBeforeDelete', true);
 
         const executeDelete = () => {
             for (const groupItem of itemsToRemove) {
@@ -280,29 +278,20 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
         };
 
-        // Show confirmation dialog if enabled
-        if (confirmBeforeDelete) {
-            const groupLabel = typeof itemsToRemove[0].label === 'string'
-                ? itemsToRemove[0].label
-                : (itemsToRemove[0].label?.label || '');
+        const groupLabel = typeof itemsToRemove[0].label === 'string'
+            ? itemsToRemove[0].label
+            : (itemsToRemove[0].label?.label || '');
 
-            const message = itemsToRemove.length > 1
-                ? I18n.getMessage('confirm.deleteGroups', itemsToRemove.length.toString())
-                : I18n.getMessage('confirm.deleteGroup', groupLabel);
+        const message = itemsToRemove.length > 1
+            ? I18n.getMessage('confirm.deleteGroups', itemsToRemove.length.toString())
+            : I18n.getMessage('confirm.deleteGroup', groupLabel);
 
-            const choice = await vscode.window.showWarningMessage(
-                message,
-                { modal: true },
-                I18n.getMessage('confirm.delete')
-            );
+        await executeWithConfirmation(
+            message,
+            I18n.getMessage('confirm.delete'),
+            executeDelete
+        );
 
-            if (choice === I18n.getMessage('confirm.delete')) {
-                executeDelete();
-            }
-        } else {
-            // No confirmation needed, delete directly
-            executeDelete();
-        }
     }));
 
     // Register auto group by extension command
@@ -393,9 +382,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         const allSelectedItems = provider.getSelectedFileItems();
         const filesToRemove = allSelectedItems.length > 1 ? allSelectedItems : [item];
 
-        // Check user preference for confirmation
-        const config = vscode.workspace.getConfiguration('virtualTabs');
-        const confirmBeforeDelete = config.get<boolean>('confirmBeforeDelete', true);
 
         const executeDelete = () => {
             if (filesToRemove.length > 1) {
@@ -408,25 +394,16 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
         };
 
-        // Show confirmation dialog if enabled
-        if (confirmBeforeDelete) {
-            const message = filesToRemove.length > 1
-                ? I18n.getMessage('confirm.deleteFiles', filesToRemove.length.toString())
-                : I18n.getMessage('confirm.deleteFile', vscode.workspace.asRelativePath(item.uri));
+        const message = filesToRemove.length > 1
+            ? I18n.getMessage('confirm.deleteFiles', filesToRemove.length.toString())
+            : I18n.getMessage('confirm.deleteFile', vscode.workspace.asRelativePath(item.uri));
 
-            const choice = await vscode.window.showWarningMessage(
-                message,
-                { modal: true },
-                I18n.getMessage('confirm.delete')
-            );
+        await executeWithConfirmation(
+            message,
+            I18n.getMessage('confirm.delete'),
+            executeDelete
+        );
 
-            if (choice === I18n.getMessage('confirm.delete')) {
-                executeDelete();
-            }
-        } else {
-            // No confirmation needed, delete directly
-            executeDelete();
-        }
     }));
 
     // Handle opening multiple selected files
@@ -601,9 +578,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
         if (filesToRemove.length === 0) return;
 
-        // Check user preference for confirmation
-        const config = vscode.workspace.getConfiguration('virtualTabs');
-        const confirmBeforeDelete = config.get<boolean>('confirmBeforeDelete', true);
 
         const executeRemove = () => {
             let hasChanges = false;
@@ -637,25 +611,16 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
         };
 
-        // Show confirmation dialog if enabled
-        if (confirmBeforeDelete) {
-            const message = filesToRemove.length > 1
-                ? I18n.getMessage('confirm.removeFiles', filesToRemove.length.toString())
-                : I18n.getMessage('confirm.removeFile', vscode.workspace.asRelativePath(filesToRemove[0].uri));
+        const message = filesToRemove.length > 1
+            ? I18n.getMessage('confirm.removeFiles', filesToRemove.length.toString())
+            : I18n.getMessage('confirm.removeFile', vscode.workspace.asRelativePath(filesToRemove[0].uri));
 
-            const choice = await vscode.window.showWarningMessage(
-                message,
-                { modal: true },
-                I18n.getMessage('confirm.remove')
-            );
+        await executeWithConfirmation(
+            message,
+            I18n.getMessage('confirm.remove'),
+            executeRemove
+        );
 
-            if (choice === I18n.getMessage('confirm.remove')) {
-                executeRemove();
-            }
-        } else {
-            // No confirmation needed, remove directly
-            executeRemove();
-        }
     }));
 
     // Generic Delete Command (for Delete key)

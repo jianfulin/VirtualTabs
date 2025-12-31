@@ -41,82 +41,21 @@ VirtualTabs 是一個 VS Code 的**邏輯檔案組織工具**，讓您可以將�
 
 ---
 
-## 🚀 v0.3.2 新功能詳解
+## ⚡ 最新亮點
 
-![v0.3.2 Features](assets/feature_032_preview.png)
+![Latest Features](assets/feature_032_preview.png)
 
-- **直接執行腳本**：`.bat` 與 `.exe` 檔案現在有專屬的 inline「執行」按鈕。
-- **更好的組織**：透過右鍵選單重新排序群組，保持優先順序。
-- **團隊共享**：您的群組現在儲存在 `.vscode/virtualTab.json`，方便提交到 Git 並與團隊共享設定。
+**v0.3.3** 提升使用者體驗：
 
-## 🆕 v0.3.0 新功能詳解
+- ⚙️ **可配置確認對話框** — 透過設定控制刪除確認對話框
+- 🌍 **更好的國際化** — 確認訊息現已完全本地化
+- 🔧 **程式碼品質** — 重構確認邏輯以提升可維護性
 
-### 📂 子群組與巢狀結構
+**v0.3.2** 帶來生產力提升：
 
-建立層級群組結構以獲得更好的組織：
-
-![Nested Groups Demo](assets/nested_groups_demo.png)
-
-- **新增子群組**：右鍵任何群組 → 「新增子群組」
-- **拖曳巢狀**：將群組拖曳到另一個群組上以建立巢狀
-- **拖曳至根層級**：拖曳到空白處以解除巢狀
-- **遞迴刪除**：刪除父群組會移除所有子群組
-
-### 🤖 AI 上下文匯出
-
-一鍵將檔案群組匯出為 AI 就緒的上下文：
-
-![AI Context Demo](assets/ai_context_demo.png)
-
-**複製 AI 上下文** 生成格式精美的 markdown：
-
-```text
-Context from Group: Feature Auth
-
-## File: src/auth.service.ts
-export class AuthService {
-  async login(credentials) {
-    const user = await this.validateUser(credentials);
-    return this.generateToken(user);
-  }
-}
-
-## File: src/auth.controller.ts
-@Post('login')
-async login(@Body() dto) {
-  return this.authService.login(dto);
-}
-```
-
-**智慧功能：**
-
-- 自動跳過二進位檔案
-- 內容 > 50KB 時在編輯器中開啟
-- 顯示大型群組的處理進度
-- 遞迴包含所有子群組檔案
-
-### 📋 統一複製選單
-
-所有複製操作集中在一個便捷的子選單中：
-
-![Copy Menu Demo](assets/copy_menu_demo.png)
-
-| 指令 | 在群組上 | 在檔案上 |
-|------|---------|---------|
-| **複製 AI 上下文** | 所有檔案（遞迴） | 單一檔案內容 |
-| **複製檔名** | 所有檔名 | 單一檔名 |
-| **複製相對路徑** | 所有路徑 | 單一路徑 |
-| **複製絕對路徑** | 所有路徑 | 單一路徑 |
-
-### 📁 目錄拖放
-
-直接從檔案總管拖曳資料夾以加入所有檔案：
-
-![Drag Drop Demo](assets/drag_drop_demo.png)
-
-- 自動偵測目錄
-- 遞迴加入所有巢狀檔案
-- 跳過目錄項目本身
+- 🎯 **Inline 執行腳本** — 一鍵執行 `.bat` 與 `.exe` 檔案
+- ⇵ **重新排序群組** — 上下移動群組以調整優先順序
+- 💾 **團隊共享** — 設定現儲存於 `.vscode/virtualTab.json`
 
 ---
 
@@ -371,7 +310,13 @@ VirtualTabs 根據您的 VS Code 語言設定自動切換：
 
 ## 📅 更新日誌
 
-### ✅ v0.3.2（最新）
+### ✅ v0.3.3（最新）
+
+- ✅ 可配置的刪除操作確認對話框
+- ✅ 國際化確認訊息（EN/ZH-TW/ZH-CN）
+- ✅ 重構確認邏輯為可重用工具函式
+
+### ✅ v0.3.2
 
 - ✅ 腳本 inline 執行按鈕 (.bat/.exe)
 - ✅ 群組排序（上移/下移）
