@@ -1,0 +1,12 @@
+[
+  {
+    "id": "builtin_group_id",
+    "name": "目前已開啟檔案",
+    "files": [
+      "README.zh-TW.md",
+      "readme.md",
+      "DEVELOPMENT.md"
+    ],
+    "builtIn": true
+  }
+]

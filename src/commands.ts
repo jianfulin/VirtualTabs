@@ -1222,4 +1222,72 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             vscode.window.showInformationMessage(I18n.getMessage('message.pathsCopied'));
         })
     );
+
+    // Transmit Command - Send files to configured target paths
+    context.subscriptions.push(
+        vscode.commands.registerCommand('virtualTabs.transmit', async (target?: vscode.Uri | TempFileItem | TempFolderItem, selectedUris?: vscode.Uri[]) => {
+            // Import TransmitManager dynamically to avoid circular dependencies
+            const { TransmitManager } = await import('./transmit');
+
+            // Load transmit targets from configuration
+            const targets = TransmitManager.loadTransmitTargets();
+            if (targets.length === 0) {
+                vscode.window.showWarningMessage(I18n.getMessage('transmit.error.noTargets'));
+                return;
+            }
+
+            // Collect files to transmit
+            const filesToTransmit: vscode.Uri[] = [];
+
+            if (selectedUris && selectedUris.length > 0) {
+                // Multiple files selected in explorer
+                for (const uri of selectedUris) {
+                    const fs = require('fs');
+                    if (fs.statSync(uri.fsPath).isDirectory()) {
+                        // If directory, get all files recursively
+                        filesToTransmit.push(...TransmitManager.getFilesInDirectory(uri.fsPath));
+                    } else {
+                        filesToTransmit.push(uri);
+                    }
+                }
+            } else if (target instanceof vscode.Uri) {
+                // Single file/folder from explorer
+                const fs = require('fs');
+                if (fs.statSync(target.fsPath).isDirectory()) {
+                    filesToTransmit.push(...TransmitManager.getFilesInDirectory(target.fsPath));
+                } else {
+                    filesToTransmit.push(target);
+                }
+            } else if (target instanceof TempFileItem) {
+                // Single file from VirtualTabs view
+                filesToTransmit.push(target.uri);
+            } else if (target instanceof TempFolderItem) {
+                // Group from VirtualTabs view - get all files in group
+                const group = provider.groups[target.groupIdx];
+                if (group && group.files) {
+                    for (const uriStr of group.files) {
+                        try {
+                            filesToTransmit.push(vscode.Uri.parse(uriStr));
+                        } catch (e) {
+                            console.error('Failed to parse URI:', uriStr, e);
+                        }
+                    }
+                }
+            }
+
+            if (filesToTransmit.length === 0) {
+                vscode.window.showInformationMessage(I18n.getMessage('transmit.info.noFiles'));
+                return;
+            }
+
+            // Select target
+            const selectedTarget = await TransmitManager.selectTarget(targets);
+            if (!selectedTarget) {
+                return; // User cancelled
+            }
+
+            // Transmit files
+            await TransmitManager.transmitFiles(filesToTransmit, selectedTarget);
+        })
+    );
 }

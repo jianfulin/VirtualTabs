@@ -248,6 +248,10 @@
             {
                 "command": "virtualTabs.paste",
                 "title": "Paste"
+            },
+            {
+                "command": "virtualTabs.transmit",
+                "title": "%command.transmit.title%"
             }
         ],
         "submenus": [
@@ -424,6 +428,11 @@
                     "group": "4_system@1"
                 },
                 {
+                    "command": "virtualTabs.transmit",
+                    "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileCustom/",
+                    "group": "5_transmit@1"
+                },
+                {
                     "command": "virtualTabs.removeFileFromGroup",
                     "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileCustom/",
                     "group": "inline@1"
@@ -457,6 +466,11 @@
                     "command": "revealFileInOS",
                     "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileBuiltIn/",
                     "group": "4_system@1"
+                },
+                {
+                    "command": "virtualTabs.transmit",
+                    "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileBuiltIn/",
+                    "group": "5_transmit@1"
                 },
                 {
                     "command": "virtualTabs.runFile",
