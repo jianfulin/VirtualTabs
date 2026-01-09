@@ -1,0 +1,13 @@
+# VirtualTabs
+> VirtualTabs is a VS Code extension for organizing files into persistent, cross-directory virtual groups, creating AI-ready coding contexts.
+
+VirtualTabs helps developers manage complex workspaces by grouping related files regardless of their location on disk, ensuring that logical context is preserved even after closing the editor.
+
+## Documentation
+- [README](https://raw.githubusercontent.com/winterdrive/VirtualTabs/main/readme.md): Core features, installation, and usage guide.
+- [Development Guide](https://raw.githubusercontent.com/winterdrive/VirtualTabs/main/DEVELOPMENT.md): Setup, architecture, and contribution instructions.
+- [Changelog](https://raw.githubusercontent.com/winterdrive/VirtualTabs/main/CHANGELOG.md): History of releases and updates.
+- [Full Context Documentation](https://winterdrive.github.io/VirtualTabs/llms-full.txt): A single file containing the full text of all critical documentation.
+
+## Optional
+- [Internationalization](https://raw.githubusercontent.com/winterdrive/VirtualTabs/main/I18N.md): Details on language support and translations.
