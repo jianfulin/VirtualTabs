@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run vscode:prepublish:*)",
+      "Bash(npx vsce:*)"
+    ]
+  }
+}

@@ -353,6 +353,11 @@
                     "group": "5_edit@1"
                 },
                 {
+                    "command": "virtualTabs.transmit",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsGroup",
+                    "group": "9_transmit@1"
+                },
+                {
                     "command": "virtualTabs.removeGroup",
                     "when": "view == virtualTabsView && viewItem == virtualTabsGroup",
                     "group": "inline@1"
@@ -393,6 +398,11 @@
                     "group": "4_copy@1"
                 },
                 {
+                    "command": "virtualTabs.transmit",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsGroupBuiltIn",
+                    "group": "9_transmit@1"
+                },
+                {
                     "command": "virtualTabs.refreshBuiltInGroup",
                     "when": "view == virtualTabsView && viewItem == virtualTabsGroupBuiltIn",
                     "group": "inline@1"
@@ -430,7 +440,7 @@
                 {
                     "command": "virtualTabs.transmit",
                     "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileCustom/",
-                    "group": "5_transmit@1"
+                    "group": "9_transmit@1"
                 },
                 {
                     "command": "virtualTabs.removeFileFromGroup",
@@ -470,7 +480,7 @@
                 {
                     "command": "virtualTabs.transmit",
                     "when": "view == virtualTabsView && viewItem =~ /virtualTabsFileBuiltIn/",
-                    "group": "5_transmit@1"
+                    "group": "9_transmit@1"
                 },
                 {
                     "command": "virtualTabs.runFile",
