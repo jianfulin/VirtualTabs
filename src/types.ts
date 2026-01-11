@@ -92,3 +92,38 @@ export interface TempGroup {
     // Reserved for future use
     metadata?: Record<string, any>;     // For bookmarks, colors, etc.
 }
+
+/**
+ * Transmit Target (v0.3.6)
+ * Defines a destination path for file transmission
+ */
+export interface TransmitTarget {
+    /**
+     * Display name for the target
+     * Example: "Production Server", "Backup Folder"
+     */
+    name: string;
+
+    /**
+     * Destination path (absolute path or network path)
+     * Example: "D:\\Deploy", "\\\\server\\share"
+     */
+    path: string;
+}
+
+/**
+ * VirtualTab Configuration File Structure
+ * Stored in .vscode/virtualTab.json
+ */
+export interface VirtualTabConfig {
+    /**
+     * Group definitions (existing format - array of TempGroup)
+     * For backward compatibility, the root can be an array
+     */
+    groups?: TempGroup[];
+
+    /**
+     * Transmit targets for file transmission feature
+     */
+    transmitTargets?: TransmitTarget[];
+}

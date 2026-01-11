@@ -62,5 +62,18 @@
     "message.configReloaded": "VirtualTabs: Config reloaded successfully.",
     "message.configDeleted": "VirtualTabs: Config file deleted. Groups reset to default.",
     "error.loadConfigFailed": "Failed to load virtualTab.json",
-    "error.invalidConfigFormat": "Invalid format in virtualTab.json. Please check the file structure."
+    "error.invalidConfigFormat": "Invalid format in virtualTab.json. Please check the file structure.",
+    "transmit.error.sourceNotFound": "Source file not found: {0}",
+    "transmit.error.failed": "Failed to transmit file '{0}': {1}",
+    "transmit.error.noTargets": "No transmit targets configured. Please add 'transmitTargets' to .vscode/virtualTab.json",
+    "transmit.confirm.overwrite": "File '{0}' already exists in '{1}'. Overwrite?",
+    "transmit.button.overwrite": "Overwrite",
+    "transmit.button.skip": "Skip",
+    "transmit.info.noFiles": "No files to transmit",
+    "transmit.info.cancelled": "Transmission cancelled. {0} files transmitted.",
+    "transmit.info.complete": "Transmitted {0} of {1} files to '{2}'",
+    "transmit.progress.title": "Transmitting files to '{0}'",
+    "transmit.progress.file": "({0}/{1}) {2}",
+    "transmit.quickPick.placeholder": "Select target destination",
+    "transmit.quickPick.title": "Transmit Files"
 }
