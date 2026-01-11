@@ -1225,7 +1225,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
     // Transmit Command - Send files to configured target paths
     context.subscriptions.push(
-        vscode.commands.registerCommand('virtualTabs.transmit', async (target?: vscode.Uri | TempFileItem | TempFolderItem, selectedUris?: vscode.Uri[]) => {
+        vscode.commands.registerCommand('virtualTabs.transmit', async (target?: vscode.Uri | TempFileItem | TempFolderItem, selectedItems?: (vscode.Uri | TempFileItem)[]) => {
             // Import TransmitManager dynamically to avoid circular dependencies
             const { TransmitManager } = await import('./transmit');
 
@@ -1239,15 +1239,23 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             // Collect files to transmit
             const filesToTransmit: vscode.Uri[] = [];
 
-            if (selectedUris && selectedUris.length > 0) {
-                // Multiple files selected in explorer
-                for (const uri of selectedUris) {
-                    const fs = require('fs');
-                    if (fs.statSync(uri.fsPath).isDirectory()) {
-                        // If directory, get all files recursively
-                        filesToTransmit.push(...TransmitManager.getFilesInDirectory(uri.fsPath));
-                    } else {
-                        filesToTransmit.push(uri);
+            if (selectedItems && selectedItems.length > 0) {
+                // Multiple items selected (could be from explorer or VirtualTabs view)
+                for (const item of selectedItems) {
+                    if (item instanceof TempFileItem) {
+                        // TempFileItem from VirtualTabs view
+                        filesToTransmit.push(item.uri);
+                    } else if (item instanceof vscode.Uri) {
+                        // Uri from explorer
+                        const fs = require('fs');
+                        if (fs.existsSync(item.fsPath)) {
+                            if (fs.statSync(item.fsPath).isDirectory()) {
+                                // If directory, get all files recursively
+                                filesToTransmit.push(...TransmitManager.getFilesInDirectory(item.fsPath));
+                            } else {
+                                filesToTransmit.push(item);
+                            }
+                        }
                     }
                 }
             } else if (target instanceof vscode.Uri) {
