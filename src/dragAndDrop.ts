@@ -27,22 +27,35 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
         const fileItems = source.filter((item): item is TempFileItem => item instanceof TempFileItem);
         const groupItems = source.filter((item): item is TempFolderItem => item instanceof TempFolderItem);
 
-        if (fileItems.length > 0) {
-            // Merge multiple file URIs into a single uri-list
-            const uriList = fileItems
-                .map(item => item.uri.toString())
-                .join('\r\n');
+        const uriSet = new Set<string>();
 
-            // Set drag data
-            dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uriList));
+        if (fileItems.length > 0) {
+            for (const item of fileItems) {
+                uriSet.add(item.uri.toString());
+            }
 
             // Also store file items for internal move operation
             dataTransfer.set('application/vnd.code.tree.virtualTabsView.files', new vscode.DataTransferItem(fileItems));
         }
 
         if (groupItems.length > 0) {
+            for (const item of groupItems) {
+                const group = this.provider.groups[item.groupIdx];
+                if (!group || group.builtIn || !group.id) continue;
+                const groupFiles = this.collectGroupFilesRecursive(group.id);
+                for (const uri of groupFiles) {
+                    uriSet.add(uri);
+                }
+            }
+
             // Store group items for internal drag-drop
             dataTransfer.set('application/vnd.code.tree.virtualTabsView', new vscode.DataTransferItem(groupItems));
+        }
+
+        if (uriSet.size > 0) {
+            const uriList = Array.from(uriSet).join('\r\n');
+            // Set drag data
+            dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uriList));
         }
     }
 
@@ -242,6 +255,33 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
         if (group.parentGroupId === potentialAncestorId) return true;
 
         return this.isDescendant(group.parentGroupId, potentialAncestorId);
+    }
+
+    private collectGroupFilesRecursive(groupId: string): string[] {
+        const files: string[] = [];
+        const visited = new Set<string>();
+
+        const walk = (id: string) => {
+            if (visited.has(id)) return;
+            visited.add(id);
+
+            const group = this.provider.groups.find(g => g.id === id);
+            if (!group) return;
+
+            if (group.files) {
+                files.push(...group.files);
+            }
+
+            const children = this.provider.groups.filter(g => g.parentGroupId === id);
+            for (const child of children) {
+                if (child.id) {
+                    walk(child.id);
+                }
+            }
+        };
+
+        walk(groupId);
+        return files;
     }
 
     /**

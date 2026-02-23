@@ -478,13 +478,42 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.refresh();
     }
 
+    private getAllFilesInGroupRecursive(groupId: string): string[] {
+        const files = new Set<string>();
+        const visited = new Set<string>();
+
+        const collect = (currentId: string) => {
+            if (visited.has(currentId)) return;
+            visited.add(currentId);
+
+            const group = this.groups.find(g => g.id === currentId);
+            if (!group) return;
+
+            if (group.files) {
+                for (const uri of group.files) {
+                    files.add(uri);
+                }
+            }
+
+            const children = this.groups.filter(g => g.parentGroupId === currentId);
+            for (const child of children) {
+                if (child.id) {
+                    collect(child.id);
+                }
+            }
+        };
+
+        collect(groupId);
+        return Array.from(files);
+    }
+
     // One-click open all files in group (only for custom groups)
     async openAllFilesInGroup(idx: number) {
         const group = this.groups[idx];
         // Skip if built-in group
         if (!group || group.builtIn) return;
 
-        const files = group.files || [];
+        const files = group.id ? this.getAllFilesInGroupRecursive(group.id) : (group.files || []);
         if (files.length > 0) {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
@@ -523,7 +552,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         // Skip if built-in group
         if (!group || group.builtIn) return;
 
-        const files = group.files || [];
+        const files = group.id ? this.getAllFilesInGroupRecursive(group.id) : (group.files || []);
         if (files.length > 0) {
             // 顯示進度通知
             vscode.window.withProgress({

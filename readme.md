@@ -127,6 +127,7 @@ In the era of Copilot and LLMs, **precise context** is the key to high-quality r
 - **Create/Rename**: Right-click panel or groups to manage.
 - **Sub-Groups**: Right-click a group → **Add Sub-Group** (or drag one group into another) to create nested structures.
 - **Auto-Sync**: The built-in "Open Editors" group automatically tracks your open tabs.
+- **Open/Close All**: Includes files in sub-groups recursively.
 - **Drag & Drop**:
   - **Files**: Drag files from Explorer into groups.
   - **Folders**: Drag folders to recursively add all files inside.

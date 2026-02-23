@@ -6,3 +6,5 @@
 *.vsix
 docs/specs/**
 .kiro/**
+docs/research/clipboard_manager_analysis.md
+idea.md

@@ -2,7 +2,7 @@
     "name": "virtual-tabs",
     "displayName": "%extension.displayName%",
     "description": "%extension.description%",
-    "version": "0.3.12",
+    "version": "0.3.13",
     "publisher": "winterdrive",
     "icon": "docs/assets/virtualtabs_icon_128.png",
     "categories": [
@@ -485,9 +485,9 @@
         },
         "keybindings": [
             {
-                "command": "virtualTabs.copy",
-                "key": "ctrl+shift+c",
-                "when": "sideBarFocus"
+                "command": "virtualTabs.renameGroup",
+                "key": "f2",
+                "when": "focusedView == virtualTabsView && listFocus"
             }
         ]
     },

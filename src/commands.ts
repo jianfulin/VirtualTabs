@@ -236,6 +236,22 @@ function resolveTargetItems<T extends TempFileItem>(
     return [];
 }
 
+function resolveGroupItem(
+    item: TempFolderItem | undefined,
+    provider: TempFoldersProvider
+): TempFolderItem | undefined {
+    if (item instanceof TempFolderItem) {
+        return item;
+    }
+
+    const selection = provider.getSelection();
+    if (selection.length === 1 && selection[0] instanceof TempFolderItem) {
+        return selection[0];
+    }
+
+    return undefined;
+}
+
 // VirtualTabs command registration
 export function registerCommands(context: vscode.ExtensionContext, provider: TempFoldersProvider): void {
     // Run executable file in terminal (explicit action via inline button)
@@ -418,8 +434,12 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
     // Group rename
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.renameGroup', async (item: TempFolderItem) => {
-        if (typeof item?.groupIdx !== 'number') return;
-        const group = provider.groups[item.groupIdx];
+        const target = resolveGroupItem(item, provider);
+        if (typeof target?.groupIdx !== 'number') {
+            vscode.window.showInformationMessage(I18n.getMessage('message.pleaseSelectGroup'));
+            return;
+        }
+        const group = provider.groups[target.groupIdx];
         if (!group || group.builtIn) return;
 
         const newName = await vscode.window.showInputBox({

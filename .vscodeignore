@@ -20,6 +20,7 @@ out/
 # 說明文件與開發文件
 DEVELOPMENT.md
 I18N.md
+idea.md
 docs/specs/**
 docs/index.html
 docs/robots.txt

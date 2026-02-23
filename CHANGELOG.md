@@ -2,6 +2,37 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.3.13] - 2026-02-23
+
+### Added
+
+- **Recursive Group Operations**: "Open All" and "Close All" commands on a parent group now recursively include all files within its nested sub-groups.
+- **Enhanced Drag & Drop**: Dragging a group now properly recursively resolves all its nested files for external drops (e.g. dragging into editor or other extensions).
+
+### Fixed
+
+- Fixed a bug where assigning the `F2` shortcut to "Rename Group" would fail to target the correctly focused group.
+
+## [0.3.12] - 2026-02-21
+
+### Added
+
+- **"Currently Open Files" Live Tracking**: The built-in group "Currently Open Files" now dynamically updates and perfectly mirrors your actual VS Code editor tabs, serving as a live workspace overview.
+
+### Changed
+
+- Improved UI/UX for the Sponsor button, replacing the generic text with a recognizable Ko-fi button in the VirtualTabs tree view to support the project.
+
+## [0.3.7 ~ 0.3.11] - 2026-01 to 2026-02
+
+### Added
+
+- **Input Box UX**: Added Cancel buttons and improved validation messages for group creation and renaming input boxes.
+
+### Fixed
+
+- Stabilized the custom TreeView rendering, ensuring that rapid group creation/deletion accurately reflects the underlying `.vscode/virtualTabs.json` state without ghost items.
+
 ## [0.3.6] - 2026-01-14
 
 ### Added

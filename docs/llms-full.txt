@@ -95,6 +95,7 @@
 - Right-click in the VirtualTabs panel → **Create New Group**
 - Name your group (e.g., "AI Context", "Feature: Auth", "Bug Fix #123")
 - Right-click any group → **Add Sub-Group** for nested organization
+- **Open/Close All**: Includes files in sub-groups recursively.
 
 ![Nested Groups](docs/assets/nested_groups_demo.png)
 
