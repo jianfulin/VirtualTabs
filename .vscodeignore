@@ -1,4 +1,4 @@
-﻿# 原始碼與編譯設定
+﻿# Source code and build config
 src/**
 tsconfig.json
 package-lock.json
@@ -8,16 +8,25 @@ package-lock.json
 # node_modules
 node_modules/
 
-# IDE 設定
+# IDE settings
 .vscode/
 .idea/
 .kiro/
 
-# 打包產物
-out/
+# Build artifacts
 *.vsix
 
-# 說明文件與開發文件
+# MCP server source and build tools (replaced by dist/mcp/index.js)
+mcp-server/
+scripts/
+vt-entry.ts
+
+# Use cases and development test files
+use_case/
+docs/CRUD_TEST_CASES.md
+docs/E2E_TESTING_GUIDE.md
+
+# Documentation and development files
 DEVELOPMENT.md
 I18N.md
 idea.md
@@ -28,12 +37,12 @@ docs/llms*.txt
 docs/research/
 CR/*
 
-# 其他暫存或備份檔
+# Temporary and backup files
 *.log
 *.tmp
 .DS_Store
 
-# 排除多餘的資產 (只保留 README 必要的)
+# Exclude extra assets (keep only those required by README)
 !docs/assets/virtualtabs_icon_gray.svg
 docs/assets/*.svg
 docs/assets/drag_to_copilot.png

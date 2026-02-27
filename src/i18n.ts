@@ -20,14 +20,12 @@ export class I18n {
         try {
             // Get VS Code language setting
             const locale = vscode.env.language || 'en';
-            console.log(`Loading i18n for locale: ${locale}`);
             
             // Try to load the corresponding language file
             const loaded = await this.loadLanguageFile(context, locale);
             
             if (!loaded) {
                 // If loading fails, try to load English as fallback
-                console.log(`Failed to load ${locale}, trying fallback to English`);
                 await this.loadLanguageFile(context, 'en');
             }
             
@@ -52,10 +50,8 @@ export class I18n {
             const content = await vscode.workspace.fs.readFile(uri);
             const messages = JSON.parse(content.toString());
             this.messages = messages;
-            console.log(`Successfully loaded ${locale}.json`);
             return true;
         } catch (error) {
-            console.log(`Failed to load ${locale}.json:`, error);
             return false;
         }
     }

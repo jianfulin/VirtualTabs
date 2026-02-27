@@ -2,7 +2,7 @@
     "name": "virtual-tabs",
     "displayName": "%extension.displayName%",
     "description": "%extension.description%",
-    "version": "0.3.13",
+    "version": "0.4.0",
     "publisher": "winterdrive",
     "icon": "docs/assets/virtualtabs_icon_128.png",
     "categories": [
@@ -21,7 +21,9 @@
         "cross-directory",
         "chatgpt",
         "copilot",
-        "chrome-like tabs"
+        "mcp",
+        "model context protocol",
+        "agent skill"
     ],
     "repository": {
         "type": "git",
@@ -72,7 +74,9 @@
         "commands": [
             {
                 "command": "virtualTabs.addGroup",
-                "title": "%command.addGroup.title%"
+                "title": "%command.addGroup.title%",
+                "icon": "$(new-folder)",
+                "shortTitle": "Add Group"
             },
             {
                 "command": "virtualTabs.removeGroup",
@@ -136,6 +140,18 @@
                 "command": "virtualTabs.runFile",
                 "title": "%command.runFile.title%",
                 "icon": "$(run)"
+            },
+            {
+                "command": "virtualTabs.generateAgentSkill",
+                "title": "Generate Agent Skill",
+                "icon": "$(robot)",
+                "shortTitle": "Agent Skill"
+            },
+            {
+                "command": "virtualTabs.showMcpConfig",
+                "title": "VirtualTabs: Show MCP Config",
+                "icon": "$(gear)",
+                "shortTitle": "MCP Config"
             },
             {
                 "command": "virtualTabs.removeSelectedFilesFromGroup",
@@ -259,6 +275,29 @@
             }
         ],
         "menus": {
+            "commandPalette": [
+                {
+                    "command": "virtualTabs.showMcpConfig",
+                    "when": "true"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "virtualTabs.showMcpConfig",
+                    "when": "view == virtualTabsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "virtualTabs.generateAgentSkill",
+                    "when": "view == virtualTabsView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "virtualTabs.addGroup",
+                    "when": "view == virtualTabsView",
+                    "group": "navigation@3"
+                }
+            ],
             "view/item/context": [
                 {
                     "command": "virtualTabs.addGroup",
@@ -318,7 +357,7 @@
                 {
                     "submenu": "virtualTabs.copyMenu.unified",
                     "when": "view == virtualTabsView && (viewItem =~ /virtualTabsGroup.*/ || virtualTabs:hasFileSelected || viewItem == virtualTabsBookmark)",
-                    "group": "4_copy@1"
+                    "group": "5_copy@1"
                 },
                 {
                     "command": "virtualTabs.removeGroup",
@@ -492,11 +531,21 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "tsc -p ./"
+        "test": "tsc -p ./ && node --test dist/test/**/*.test.js",
+        "vscode:prepublish": "npm run build:vt && npm run build:mcp && tsc -p ./",
+        "build:mcp": "esbuild mcp-server/src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/mcp/index.js --external:vscode",
+        "build:vt": "npx tsx scripts/bundle-vt.ts"
     },
     "devDependencies": {
         "@types/node": "^22.15.29",
         "@types/vscode": "^1.70.0",
-        "typescript": "^4.0.0"
+        "@modelcontextprotocol/sdk": "^1.27.1",
+        "esbuild": "^0.27.3",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3",
+        "zod": "^4.3.6"
+    },
+    "dependencies": {
+        "fast-glob": "^3.3.3"
     }
 }

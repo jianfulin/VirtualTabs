@@ -74,6 +74,7 @@
 - **🤖 AI 上下文匯出** — 一鍵複製所有檔案為 LLM 就緒的上下文 `(v0.3.0)`
 - **▶️ 腳本執行** — `.bat` 與 `.exe` 檔案的 inline 執行按鈕 `(v0.3.2)`
 - **💾 便攜設定** — 設定儲存於 `.vscode/virtualTab.json`，方便團隊共享 `(v0.3.2)`
+- **🔌 AI Agent 整合 (MCP)** — 讓 AI 代理（Cursor、Copilot、Claude、Kiro、Antigravity）透過 Model Context Protocol 直接管理您的群組 `(v0.4.0)`
 
 ### ⚡ 工作流程加速
 
@@ -87,11 +88,27 @@
 
 ## ⚡ 最新亮點
 
+**v0.4.0** 帶來完整的 AI Agent 整合 — 讓您的 AI 助手直接管理 VirtualTabs 群組：
+
+- 🔌 **MCP Server 整合** — 完整打包的 MCP 伺服器（`dist/mcp/index.js`）隨擴充功能一起提供，暴露 15+ 工具供 AI 代理建立群組、管理檔案、處理書籤與探索專案。
+- 🛡️ **Agent Skill 生成** — 一個指令即可為您的 AI 工具生成專屬技能檔案（Cursor `.mdc`，其餘工具則為 `SKILL.md`）。包含四層安全決策樹，並清楚標示 VirtualTabs 群組為**純虛擬結構** — 磁碟上不會有任何檔案被移動。
+- ⚙️ **MCP 設定面板** — 單擊即可取得適用於各 AI 工具的 MCP 伺服器設定 JSON。
+- 📦 **內建 CLI 後備方案** (`vt.bundle.js`) — 與每個生成的技能檔案一同提供的獨立 CLI，在 MCP 工具無法使用時作為最後手段。
+
+### 在 IDE 中設置 MCP — 各 AI 工具的配置指南
+
+| Cursor | Antigravity (Google) | Kiro |
+|:---:|:---:|:---:|
+| ![Cursor MCP 設置](docs/assets/mcp_cursor_demo.png) | ![Antigravity MCP 設置](docs/assets/mcp_antigravity_demo.png) | ![Kiro MCP 設置](docs/assets/mcp_kiro_demo.png) |
+| 在 Cursor 設定中配置 MCP | 在 Antigravity 環境中配置 MCP | 在 Kiro IDE 中配置 MCP |
+
+> 使用 **MCP 設定面板**（命令：`VirtualTabs: Show MCP Config`）為您選用的 AI 工具生成現成可用的配置代碼。
+
+**v0.3.6** 重磅推出強大的多選複製功能：
+
 ![複製選單示範](docs/assets/copy_menu_demo.png)
 
-**v0.3.6** 重磅推出強大的多選複製功能:
-
-- 🎯 **多選複寫支援 (核心改進)** — 支援一次選取多個檔案/群組並進行複製。
+- 🎯 **多選複製支援 (核心改進)** — 支援一次選取多個檔案/群組並進行複製。
   - 支援一鍵複製：檔名、相對路徑、絕對路徑。
   - 增強型「複製 AI 上下文」：完美處理混合選擇（檔案 + 群組 + 書籤），並自動執行內容去重。
 - 🎨 **智慧整合選單** — 捨棄冗餘的重複選單，將 4 個子目錄整合為單一智慧選單。
@@ -184,8 +201,6 @@
 
 ---
 
----
-
 ## 💡 最佳實踐
 
 1. **依任務分組，而非資料夾**：思考您正在做什麼，而非檔案在哪裡
@@ -194,8 +209,6 @@
 4. **建立 AI 上下文群組**：將 5-10 個檔案分組以獲得專注的 AI 協助
 5. **提示前先匯出**：在詢問 LLM 前使用「複製 AI 上下文」
 6. **定期審查整理**：定期清理未使用的群組以保持組織
-
----
 
 ---
 
@@ -273,7 +286,14 @@
 
 👉 完整版本歷史請見 [CHANGELOG.md](./CHANGELOG.md)。
 
-### ✅ v0.3.6（最新）
+### ✅ v0.4.0（最新）
+
+- 🔌 **MCP Server** — 內建 MCP 伺服器，讓 AI 代理可透過 Model Context Protocol 管理群組
+- 🛡️ **Agent Skill 生成** — 為 Cursor、Copilot、Claude、Kiro、Antigravity 生成專屬技能檔案
+- ⚙️ **MCP 設定面板** — 一鍵取得各支援 AI 工具的設定 JSON
+- 📦 **內建 CLI 後備方案** — 獨立 `vt.bundle.js`，在 MCP 無法使用時作為最後手段的編輯路徑
+
+### v0.3.6
 
 - 🎯 **多選複製支援** — 所有複製指令現支援選取多個檔案/群組
 - 🎨 **統一複製選單** — 將 4 個重複子選單整合為一個智慧選單

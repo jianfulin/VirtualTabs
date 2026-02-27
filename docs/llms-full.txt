@@ -1,5 +1,6 @@
 # VirtualTabs Full Context Documentation
 > This file contains the complete text of all key documentation for VirtualTabs, intended for use by AI agents and LLMs.
+> **v0.4.0 Highlight**: VirtualTabs now ships a bundled MCP Server for AI agent integration. Generate Agent Skills for Cursor, Copilot, Claude, Kiro, and Antigravity. Let your AI assistant manage file groups programmatically via the Model Context Protocol.
 
 ---
 # README
@@ -20,7 +21,7 @@
 
 ## 🚀 What is VirtualTabs?
 
-**VirtualTabs is a VS Code extension that allows developers to organize files into persistent, custom virtual tab groups across directories.** Unlike standard tabs, VirtualTabs helps you build **AI-ready coding contexts** and logical file groups that stay organized even when you close VS Code. It is designed to improve navigation for large monorepos and enhance task-based workflows.
+**VirtualTabs is a VS Code extension that allows developers to organize files into persistent, custom virtual tab groups across directories, backed by a bundled MCP Server for AI agent integration.** Unlike standard tabs, VirtualTabs helps you build **AI-ready coding contexts**, generate **Agent Skills for AI tools** (Cursor, Copilot, Claude, Kiro, Antigravity), and manage groups programmatically. It is designed to improve navigation for large monorepos and enhance task-based workflows with AI assistance.
 
 ---
 
@@ -38,7 +39,10 @@
 
 ### Core Capabilities
 
-- **📁 Cross-Directory Grouping** — Organize files from anywhere, breaking free from folder constraints
+- **🔌 AI Agent Integration (MCP)** — Connect AI agents (Cursor, Copilot, Claude, Kiro, Antigravity) via bundled MCP Server to manage groups programmatically `(v0.4.0)`
+- **🛡️ Agent Skill Generation** — Generate target-specific skill files (`.mdc` for Cursor, `SKILL.md` for others) with safety decision trees `(v0.4.0)`
+- **⚙️ MCP Config Panel** — One-click MCP configuration export for your AI tool `(v0.4.0)`
+- **📂 Cross-Directory Grouping** — Organize files from anywhere, breaking free from folder constraints
 - **🔖 Task-Oriented Bookmarks** — Mark specific lines of code within your groups for quick navigation `(v0.2.0)`
 - **📂 Sub-Groups & Nesting** — Create hierarchical structures for better organization `(v0.3.0)`
 - **🤖 AI Context Export** — One-click copy all files as LLM-ready context `(v0.3.0)`
@@ -55,9 +59,14 @@
 
 ---
 
-## ⚡ Latest Highlights
+## 🚀 Latest Highlights
 
-![Latest Features](docs/assets/feature_032_preview.png)
+**v0.4.0** brings full AI agent integration — let your AI assistant manage VirtualTabs groups directly:
+
+- 🔌 **MCP Server Integration** — A fully bundled MCP server (`dist/mcp/index.js`) ships with the extension, exposing 15+ tools for AI agents to create groups, manage files, handle bookmarks, and explore the project.
+- 🛡️ **Agent Skill Generation** — One command generates a tailored skill file for your AI tool (Cursor `.mdc`, or `SKILL.md` for Copilot, Claude, Antigravity, Kiro). Includes a four-layer safety decision tree and a CRITICAL CONCEPT warning that VirtualTabs groups are *purely virtual* — no files are ever moved on disk.
+- ⚙️ **MCP Config Panel** — Get ready-to-paste MCP server configuration for your AI tool with a single click.
+- 📦 **Bundled CLI Fallback** (`vt.bundle.js`) — A self-contained CLI co-located with each generated skill file provides a last-resort editing path when MCP tools are unavailable.
 
 **v0.3.3** enhances user experience:
 

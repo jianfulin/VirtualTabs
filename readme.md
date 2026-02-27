@@ -74,6 +74,7 @@ In the era of Copilot and LLMs, **precise context** is the key to high-quality r
 - **🤖 AI Context Export** — One-click copy all files as LLM-ready context `(v0.3.0)`
 - **▶️ Script Execution** — Inline run button for `.bat` and `.exe` files `(v0.3.2)`
 - **💾 Portable Config** — Settings saved to `.vscode/virtualTab.json` for team sharing `(v0.3.2)`
+- **🔌 AI Agent Integration (MCP)** — Connect AI agents (Cursor, Copilot, Claude, Kiro, Antigravity) to manage your groups programmatically via the Model Context Protocol `(v0.4.0)`
 
 ### ⚡ Workflow Boosters
 
@@ -87,9 +88,25 @@ In the era of Copilot and LLMs, **precise context** is the key to high-quality r
 
 ## ⚡ Latest Highlights
 
-![Copy Menu Demo](docs/assets/copy_menu_demo.png)
+**v0.4.0** brings full AI agent integration — let your AI assistant manage VirtualTabs groups directly:
 
-**v0.3.6** introduces powerful multi-select copy & system improvements:
+- 🔌 **MCP Server Integration** — A fully bundled MCP server (`dist/mcp/index.js`) ships with the extension, exposing 15+ tools for AI agents to create groups, manage files, handle bookmarks, and explore the project.
+- 🛡️ **Agent Skill Generation** — One command generates a tailored skill file for your AI tool (Cursor `.mdc`, or `SKILL.md` for Copilot, Claude, Antigravity, Kiro). Includes a four-layer safety decision tree and a CRITICAL CONCEPT warning that VirtualTabs groups are *purely virtual* — no files are ever moved on disk.
+- ⚙️ **MCP Config Panel** — Get ready-to-paste MCP server configuration for your AI tool with a single click.
+- 📦 **Bundled CLI Fallback** (`vt.bundle.js`) — A self-contained CLI co-located with each generated skill file provides a last-resort editing path when MCP tools are unavailable.
+
+### MCP Configuration in Your IDE — Setup for Each AI Agent
+
+| Cursor | Antigravity (Google) | Kiro |
+|:---:|:---:|:---:|
+| ![Cursor MCP Setup](docs/assets/mcp_cursor_demo.png) | ![Antigravity MCP Setup](docs/assets/mcp_antigravity_demo.png) | ![Kiro MCP Setup](docs/assets/mcp_kiro_demo.png) |
+| Configure MCP in Cursor settings | Configure MCP in Antigravity environment | Configure MCP in Kiro IDE |
+
+> Use the **MCP Config Panel** (command: `VirtualTabs: Show MCP Config`) to generate ready-to-paste configuration for your chosen AI tool.
+
+**v0.3.6** introduced powerful multi-select copy & system improvements:
+
+![Copy Menu Demo](docs/assets/copy_menu_demo.png)
 
 - 🎯 **Multi-select Copy Support (Core Update)** — Select multiple files or groups and copy everything at once.
   - One-click copy for: File Names, Relative Paths, and Absolute Paths.
@@ -193,8 +210,6 @@ Everything you need in one place. Right-click any file or group:
 
 ---
 
----
-
 ## ❓ FAQ
 
 ### Q1: I don't see the VirtualTabs panel?
@@ -269,7 +284,14 @@ Get Quick Prompt on [**VS Code Marketplace**](https://marketplace.visualstudio.c
 
 👉 See [CHANGELOG.md](./CHANGELOG.md) for full release history.
 
-### ✅ v0.3.6 (Latest)
+### ✅ v0.4.0 (Latest)
+
+- 🔌 **MCP Server** — Bundled MCP server enabling AI agents to manage groups via the Model Context Protocol
+- 🛡️ **Agent Skill Generation** — Generates target-specific skill files for Cursor, Copilot, Claude, Kiro, and Antigravity
+- ⚙️ **MCP Config Panel** — One-click config snippet for every supported AI client
+- 📦 **Bundled CLI Fallback** — Self-contained `vt.bundle.js` as a last-resort editing path when MCP is unavailable
+
+### v0.3.6
 
 - 🎯 **Multi-select Copy Support** — All copy commands now support selecting multiple files/groups
 - 🎨 **Unified Copy Menu** — Consolidated 4 duplicate submenus into one smart menu

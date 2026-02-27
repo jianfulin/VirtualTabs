@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { TempFoldersProvider } from './provider';
 import { TempFolderItem, TempFileItem } from './treeItems';
+import { I18n } from './i18n';
 
 // Drag-and-drop controller, allows files to be dragged into groups AND groups to be nested
 export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropController<vscode.TreeItem> {
@@ -213,17 +214,17 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
 
                 // Validation checks
                 if (sourceGroup.id === destGroup.id) {
-                    vscode.window.showErrorMessage('Cannot nest a group into itself.');
+                    vscode.window.showErrorMessage(I18n.getMessage('error.cannotNestSelf'));
                     continue;
                 }
 
                 if (this.isDescendant(destGroup.id, sourceGroup.id)) {
-                    vscode.window.showErrorMessage('Cannot create circular nesting: target is a descendant of source.');
+                    vscode.window.showErrorMessage(I18n.getMessage('error.circularNesting'));
                     continue;
                 }
 
                 if (sourceGroup.builtIn) {
-                    vscode.window.showErrorMessage('Cannot nest the built-in group.');
+                    vscode.window.showErrorMessage(I18n.getMessage('error.cannotNestBuiltIn'));
                     continue;
                 }
 

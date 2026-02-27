@@ -1,6 +1,6 @@
 {
-    "extension.displayName": "VirtualTabs - Virtual File Directories & AI Context",
-    "extension.description": "Organize files into Virtual File Directories across project boundaries. Perfect for large MVC/MVVM projects & Monorepos. Features AI-ready context export, smart multi-select copy, and persistent bookmarks.",
+    "extension.displayName": "VirtualTabs - Virtual File Directories & AI context management",
+    "extension.description": "Organize files into Virtual File Directories backed by a bundled MCP Server for AI agent integration. Perfect for MVC/MVVM projects, Monorepos, and LLM context management. Features AI-ready context export, Agent Skill generation (Cursor, Copilot, Claude, Kiro, Antigravity), multi-select copy, and persistent bookmarks.",
     "view.virtualTabsContainer.title": "Virtual Tabs",
     "view.virtualTabsView.name": "Virtual Tabs",
     "command.addGroup.title": "Add Group",

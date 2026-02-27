@@ -2,6 +2,27 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.4.0] - 2026-03-01
+
+### Added
+
+- **MCP Server Integration**: A fully bundled MCP server (`dist/mcp/index.js`) ships with the extension, enabling AI agents (Cursor, GitHub Copilot, Claude Desktop, Kiro IDE, Antigravity) to manage file groups programmatically via the Model Context Protocol.
+- **Agent Skill Generation** (`VirtualTabs: Generate Agent Skill`): Generates a target-specific skill file (`.mdc` for Cursor, `SKILL.md` for others) containing tool documentation and a four-layer safety decision tree. The skill prominently clarifies that VirtualTabs groups are **purely virtual** — no files are moved on disk — preventing a common class of agent misunderstandings.
+- **MCP Config Panel** (`VirtualTabs: Show MCP Config`): A webview panel displaying ready-to-copy MCP server configuration JSON for each supported AI client (Cursor, GitHub Copilot, Claude Desktop, Kiro IDE, Antigravity).
+- **MCP Tools**: `list_groups`, `create_group`, `rename_group`, `move_group`, `delete_group`, `add_files_to_group`, `remove_files_from_group`, `explore_project`, `read_file`, `create_bookmark`, `delete_bookmark`, `list_bookmarks`, `set_group_sorting`, `auto_group_by_extension`, `auto_group_by_date`.
+- **Safety Fallback MCP Tools**: `validate_json_structure` and `append_group_to_json` for use when primary tools fail; both enforce workspace-relative paths, detect duplicate group names, and auto-create backups before any write.
+- **Bundled CLI Script** (`vt.bundle.js`): A self-contained Node.js CLI bundled alongside each generated skill file as a Layer 3 last-resort fallback. Supports `list-groups`, `add-group`, `add-files`, and `remove-group` commands with automatic workspace-root detection.
+- **Shared Core Library** (`src/core/`): Core business logic for group management, file operations, bookmarks, path utilities, and project exploration is now maintained in a single shared library consumed by both the VS Code extension and the MCP server, ensuring consistent behaviour across all surfaces.
+
+### Changed
+
+- Toolbar now shows **MCP Config**, **Generate Skill**, and **Add Group** buttons in the VirtualTabs tree view header.
+- MCP server managers refactored as thin wrappers over the new `src/core/` shared library, eliminating duplicate logic.
+
+### Fixed
+
+- Corrected config filename reference from `virtualTabs.json` (wrong) to `virtualTab.json` (correct) throughout the codebase and documentation.
+
 ## [0.3.13] - 2026-02-23
 
 ### Added
@@ -31,7 +52,7 @@ All notable changes to the "VirtualTabs" extension will be documented in this fi
 
 ### Fixed
 
-- Stabilized the custom TreeView rendering, ensuring that rapid group creation/deletion accurately reflects the underlying `.vscode/virtualTabs.json` state without ghost items.
+- Stabilized the custom TreeView rendering, ensuring that rapid group creation/deletion accurately reflects the underlying `.vscode/virtualTab.json` state without ghost items.
 
 ## [0.3.6] - 2026-01-14
 

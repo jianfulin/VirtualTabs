@@ -1,5 +1,3 @@
-import * as vscode from 'vscode';
-
 // Sort criteria for files in a group
 export type SortCriteria =
     | 'none'        // Insertion order (default)
@@ -90,6 +88,23 @@ export interface TempGroup {
      */
     bookmarks?: Record<string, VTBookmark[]>;
 
+    // Display customisation (v0.4.0)
+    color?: string;                     // VS Code color theme ID (e.g. "charts.blue")
+
     // Reserved for future use
-    metadata?: Record<string, any>;     // For bookmarks, colors, etc.
+    metadata?: Record<string, unknown>;
+}
+
+/**
+ * Bookmark query result (used by MCP tool layer / CLI)
+ */
+export interface BookmarkInfo {
+    id: string;
+    groupId: string;
+    groupName: string;
+    filePath: string;
+    line: number;
+    label: string;
+    description?: string;
+    created: number;
 }

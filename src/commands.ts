@@ -1,10 +1,13 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
+import * as path from 'path';
 import { TempFoldersProvider } from './provider';
 import { TempFileItem, TempFolderItem, BookmarkItem } from './treeItems';
 import { I18n } from './i18n';
-import { BookmarkManager } from './bookmarks';
+import { BookmarkManager } from './core/BookmarkManager';
 import { TempGroup } from './types';
 import { executeWithConfirmation } from './util';
+import { SkillGenerator } from './mcp/SkillGenerator';
+import { McpConfigPanel } from './mcp/McpConfigPanel';
 
 // Global clipboard for VirtualTabs items
 let globalClipboardItems: (TempFileItem | TempFolderItem)[] = [];
@@ -31,7 +34,6 @@ function getFileUri(target: FileCommandTarget): vscode.Uri | undefined {
 }
 
 function isExecutableExtension(uri: vscode.Uri): boolean {
-    const path = require('path');
     const ext = path.extname(uri.fsPath).toLowerCase();
     return ext === '.bat' || ext === '.exe';
 }
@@ -45,7 +47,6 @@ function getExecutionCwd(uri: vscode.Uri): string {
     if (firstFolder) {
         return firstFolder.uri.fsPath;
     }
-    const path = require('path');
     return path.dirname(uri.fsPath);
 }
 
@@ -74,7 +75,6 @@ function detectShellKindFromPath(shellPath?: string): ShellKind {
     if (!shellPath) {
         return 'other';
     }
-    const path = require('path');
     const name = path.basename(shellPath).toLowerCase();
     if (name.includes('pwsh') || name.includes('powershell')) {
         return 'powershell';
@@ -274,6 +274,16 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         provider.addGroup();
     }));
 
+    // Register generate agent skill command
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.generateAgentSkill', async () => {
+        await SkillGenerator.generateSkill(context);
+    }));
+
+    // Register show MCP Config
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.showMcpConfig', () => {
+        McpConfigPanel.show(context.extensionUri);
+    }));
+
     // Register add sub-group command
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.addSubGroup', (item: TempFolderItem) => {
         if (item && item.groupId) {
@@ -311,11 +321,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
         const executeDelete = () => {
             for (const groupItem of itemsToRemove) {
-                if (groupItem.groupId) {
-                    provider.removeGroupById(groupItem.groupId);
-                } else if (typeof groupItem.groupIdx === 'number') {
-                    provider.removeGroup(groupItem.groupIdx);
-                }
+                provider.removeGroupById(groupItem.groupId);
             }
         };
 
@@ -341,7 +347,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             return;
         }
 
-        const path = require('path');
         const fileName = path.basename(item.uri.fsPath);
         const config = vscode.workspace.getConfiguration('virtualTabs');
         const confirmBeforeDelete = config.get<boolean>('confirmBeforeDelete', true);
@@ -349,12 +354,13 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         let shouldDelete = true;
 
         if (confirmBeforeDelete) {
+            const moveToTrashLabel = I18n.getMessage('confirm.moveToTrash');
             const confirm = await vscode.window.showWarningMessage(
-                `Are you sure you want to delete "${fileName}"?`,
+                I18n.getMessage('confirm.deleteFromDisk', fileName),
                 { modal: true },
-                'Move to Trash'
+                moveToTrashLabel
             );
-            shouldDelete = (confirm === 'Move to Trash');
+            shouldDelete = (confirm === moveToTrashLabel);
         }
 
         if (shouldDelete) {
@@ -367,11 +373,11 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
                 // Auto-remove from TreeView (no additional confirmation needed)
                 provider.removeFilesFromGroup(item.groupIdx, [item]);
 
-                vscode.window.showInformationMessage(`Deleted: ${fileName}`);
+                vscode.window.showInformationMessage(I18n.getMessage('message.fileDeleted', fileName));
                 // refresh() is called inside removeFilesFromGroup
-            } catch (error: any) {
-                const errorMsg = error?.message || String(error);
-                vscode.window.showErrorMessage(`Failed to delete "${fileName}": ${errorMsg}`);
+            } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(I18n.getMessage('error.deleteFileFailed', fileName, errorMsg));
             }
         }
     }));
@@ -529,7 +535,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
     // Copy name command (copies only the name, no recursion)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.copyName', async (item: TempFileItem | TempFolderItem | BookmarkItem) => {
-        const path = require('path');
         let name = '';
 
         if (item instanceof TempFileItem) {
@@ -548,16 +553,15 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
         if (name) {
             await vscode.env.clipboard.writeText(name);
-            vscode.window.showInformationMessage(`Copied: ${name}`);
+            vscode.window.showInformationMessage(I18n.getMessage('message.nameCopied', name));
         } else {
-            vscode.window.showInformationMessage('No name to copy.');
+            vscode.window.showInformationMessage(I18n.getMessage('message.noNameToCopy'));
         }
     }));
 
 
     // Copy file name command (works for both files and groups, supports multi-select)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.copyFileName', async (item: TempFileItem | TempFolderItem, selectedItems?: (TempFileItem | TempFolderItem)[]) => {
-        const path = require('path');
         let itemsToProcess: (TempFileItem | TempFolderItem)[] = [];
 
         if (selectedItems && Array.isArray(selectedItems) && selectedItems.length > 0) {
@@ -590,16 +594,15 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         itemsToProcess.forEach(processItem);
 
         if (results.size === 0) {
-            vscode.window.showInformationMessage('No files found to copy.');
+            vscode.window.showInformationMessage(I18n.getMessage('message.noFilesToCopy'));
             return;
         }
 
         const text = Array.from(results).join('\n');
         await vscode.env.clipboard.writeText(text);
-        vscode.window.showInformationMessage(`Copied ${results.size} file names.`);
+        vscode.window.showInformationMessage(I18n.getMessage('message.copiedFileNames', results.size.toString()));
     }));
 
-    // Copy relative path command (works for both files and groups)
     // Copy relative path command (works for both files and groups, supports multi-select)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.copyRelativePath', async (item: TempFileItem | TempFolderItem, selectedItems?: (TempFileItem | TempFolderItem)[]) => {
         let itemsToProcess: (TempFileItem | TempFolderItem)[] = [];
@@ -634,16 +637,15 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         itemsToProcess.forEach(processItem);
 
         if (results.size === 0) {
-            vscode.window.showInformationMessage('No files found to copy.');
+            vscode.window.showInformationMessage(I18n.getMessage('message.noFilesToCopy'));
             return;
         }
 
         const text = Array.from(results).join('\n');
         await vscode.env.clipboard.writeText(text);
-        vscode.window.showInformationMessage(`Copied ${results.size} relative paths.`);
+        vscode.window.showInformationMessage(I18n.getMessage('message.copiedRelativePaths', results.size.toString()));
     }));
 
-    // Copy absolute path command (works for both files and groups)
     // Copy absolute path command (works for both files and groups, supports multi-select)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.copyAbsolutePath', async (item: TempFileItem | TempFolderItem, selectedItems?: (TempFileItem | TempFolderItem)[]) => {
         let itemsToProcess: (TempFileItem | TempFolderItem)[] = [];
@@ -678,13 +680,13 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         itemsToProcess.forEach(processItem);
 
         if (results.size === 0) {
-            vscode.window.showInformationMessage('No files found to copy.');
+            vscode.window.showInformationMessage(I18n.getMessage('message.noFilesToCopy'));
             return;
         }
 
         const text = Array.from(results).join('\n');
         await vscode.env.clipboard.writeText(text);
-        vscode.window.showInformationMessage(`Copied ${results.size} absolute paths.`);
+        vscode.window.showInformationMessage(I18n.getMessage('message.copiedAbsolutePaths', results.size.toString()));
     }));
 
     // Duplicate built-in group
@@ -773,84 +775,58 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
     // Generic Delete Command (for Delete key)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.delete', (item?: TempFileItem | TempFolderItem, selectedItems?: (TempFileItem | TempFolderItem)[]) => {
-        console.log('[DEBUG] virtualTabs.delete triggered');
-        console.log('[DEBUG] item:', item);
-        console.log('[DEBUG] selectedItems:', selectedItems);
-
         let selection: (TempFileItem | TempFolderItem)[] = [];
 
         // Priority: selectedItems > item > provider.getSelection()
         if (selectedItems && selectedItems.length > 0) {
-            console.log('[DEBUG] Using selectedItems');
             selection = selectedItems;
         } else if (item) {
-            console.log('[DEBUG] Using single item');
             selection = [item];
         } else {
-            console.log('[DEBUG] Using provider.getSelection()');
             selection = provider.getSelection() as (TempFileItem | TempFolderItem)[];
         }
 
-        console.log('[DEBUG] Selection:', selection);
-        console.log('[DEBUG] Selection length:', selection.length);
-
         if (selection.length === 0) {
-            console.log('[DEBUG] No selection, returning');
             return;
         }
 
         // Categorize items
         const filesToRemove = selection.filter(i => i instanceof TempFileItem) as TempFileItem[];
         const groupsToRemove = selection.filter(i => i instanceof TempFolderItem) as TempFolderItem[];
-        console.log('[DEBUG] Files to remove:', filesToRemove.length);
-        console.log('[DEBUG] Groups to remove:', groupsToRemove.length);
 
         // 1. Remove files
         if (filesToRemove.length > 0) {
-            console.log('[DEBUG] Executing removeFileFromGroup');
             vscode.commands.executeCommand('virtualTabs.removeFileFromGroup', filesToRemove[0], filesToRemove);
         }
 
         // 2. Remove groups
         if (groupsToRemove.length > 0) {
-            console.log('[DEBUG] Executing removeGroup');
             vscode.commands.executeCommand('virtualTabs.removeGroup', groupsToRemove[0], groupsToRemove);
         }
     }));
 
     // Copy Command
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.copy', async (item: TempFileItem | TempFolderItem | undefined, selectedItems?: (TempFileItem | TempFolderItem)[]) => {
-        console.log('[DEBUG] virtualTabs.copy triggered');
-        console.log('[DEBUG] item:', item);
-        console.log('[DEBUG] selectedItems:', selectedItems);
-
         let itemsToCopy: (TempFileItem | TempFolderItem)[] = [];
 
         if (selectedItems && Array.isArray(selectedItems) && selectedItems.length > 0) {
-            console.log('[DEBUG] Using selectedItems');
             itemsToCopy = selectedItems;
         } else if (item) {
-            console.log('[DEBUG] Using single item');
             itemsToCopy = [item];
         } else {
             // Keybinding case: get from provider
-            console.log('[DEBUG] Keybinding case: getting selection from provider');
             const selection = provider.getSelection();
-            console.log('[DEBUG] Provider selection:', selection);
             if (selection.length > 0) {
                 itemsToCopy = selection.filter(i => i instanceof TempFileItem || i instanceof TempFolderItem) as (TempFileItem | TempFolderItem)[];
             }
         }
 
-        console.log('[DEBUG] Items to copy:', itemsToCopy.length);
         if (itemsToCopy.length === 0) {
-            console.log('[DEBUG] No items to copy, returning');
             return;
         }
 
         // 1. Update internal clipboard
         globalClipboardItems = [...itemsToCopy];
-        console.log('[DEBUG] Updated globalClipboardItems:', globalClipboardItems.length);
 
         // 2. Update system clipboard (text/plain)
         const textToCopy = itemsToCopy
@@ -863,34 +839,25 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             .join('\n');
 
         await vscode.env.clipboard.writeText(textToCopy);
-        console.log('[DEBUG] Copied to clipboard');
-        vscode.window.setStatusBarMessage(`✓ Copied ${itemsToCopy.length} item(s)`, 3000);
+        vscode.window.setStatusBarMessage(`✓ ${I18n.getMessage('message.copiedItems', itemsToCopy.length.toString())}`, 3000);
     }));
 
     // Paste Command
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.paste', (target: TempFolderItem | TempFileItem | undefined) => {
-        console.log('[DEBUG] virtualTabs.paste triggered');
-        console.log('[DEBUG] target:', target);
-        console.log('[DEBUG] globalClipboardItems:', globalClipboardItems.length);
-
         let actualTarget = target;
 
         // Handle keybinding invocation
         if (!actualTarget) {
-            console.log('[DEBUG] No target, getting from selection');
             const selection = provider.getSelection();
-            console.log('[DEBUG] Selection:', selection);
             if (selection.length > 0) {
                 const first = selection[0];
                 if (first instanceof TempFolderItem || first instanceof TempFileItem) {
                     actualTarget = first;
-                    console.log('[DEBUG] Using first selection as target');
                 }
             }
         }
 
         if (!actualTarget) {
-            console.log('[DEBUG] No actual target, returning');
             return;
         }
 
@@ -898,25 +865,20 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
         if (actualTarget instanceof TempFolderItem) {
             targetGroupIdx = actualTarget.groupIdx;
-            console.log('[DEBUG] Target is folder, groupIdx:', targetGroupIdx);
         } else if (actualTarget instanceof TempFileItem) {
             targetGroupIdx = actualTarget.groupIdx;
-            console.log('[DEBUG] Target is file, groupIdx:', targetGroupIdx);
         }
 
         if (targetGroupIdx === undefined) {
-            console.log('[DEBUG] No target group index, returning');
             return;
         }
 
         if (globalClipboardItems.length === 0) {
-            console.log('[DEBUG] No items in clipboard, returning');
             return;
         }
 
         const group = provider.groups[targetGroupIdx];
         if (!group) {
-            console.log('[DEBUG] Group not found, returning');
             return;
         }
 
@@ -924,8 +886,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         const urisToAdd = globalClipboardItems
             .filter(i => i instanceof TempFileItem)
             .map(i => (i as TempFileItem).uri.toString());
-
-        console.log('[DEBUG] URIs to add:', urisToAdd.length);
 
         if (urisToAdd.length > 0) {
             if (!group.files) group.files = [];
@@ -937,10 +897,9 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
                 }
             }
 
-            console.log('[DEBUG] Added count:', addedCount);
             if (addedCount > 0) {
                 provider.refresh();
-                vscode.window.setStatusBarMessage(`✓ Pasted ${addedCount} item(s)`, 3000);
+                vscode.window.setStatusBarMessage(`✓ ${I18n.getMessage('message.pastedItems', addedCount.toString())}`, 3000);
             }
         }
     }));
@@ -1027,13 +986,13 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
             // Scenario: No custom groups available
             if (customGroups.length === 0) {
-                const createOption = I18n.getMessage('command.addGroup.title'); // Reuse "Add Group" string or similar
+                const createGroupLabel = I18n.getMessage('bookmark.createGroup');
                 const selection = await vscode.window.showInformationMessage(
-                    "No custom groups found. Create a new group?",
-                    "Create Group"
+                    I18n.getMessage('bookmark.noGroupsCreatePrompt'),
+                    createGroupLabel
                 );
 
-                if (selection === "Create Group") {
+                if (selection === createGroupLabel) {
                     await provider.addGroup();
                     // After creating, we could try to continue, but simpler to ask user to try again
                     // or we could auto-select the new group. Let's just return for now to keep it simple.
@@ -1078,7 +1037,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
 
             // 3. Create Bookmark (No Input Box!)
-            const bookmark = BookmarkManager.createBookmark(
+            const bookmark = BookmarkManager.createBookmarkObject(
                 position.line,
                 label,
                 position.character,
@@ -1089,7 +1048,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             provider.refresh();
 
             // Subtle feedback
-            vscode.window.setStatusBarMessage(`Bookmark added to ${targetGroup.name}`, 3000);
+            vscode.window.setStatusBarMessage(`\u2713 ${I18n.getMessage('bookmark.addedToGroup', targetGroup.name)}`, 3000);
         })
     );
 
@@ -1150,7 +1109,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             const group = provider.groups[item.groupIdx];
             const updatedBookmark = BookmarkManager.updateLabel(item.bookmark, newLabel);
 
-            BookmarkManager.updateBookmark(
+            BookmarkManager.updateBookmarkInGroup(
                 group,
                 item.fileUri.toString(),
                 item.bookmark.id,
@@ -1187,7 +1146,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
                 newDescription || undefined
             );
 
-            BookmarkManager.updateBookmark(
+            BookmarkManager.updateBookmarkInGroup(
                 group,
                 item.fileUri.toString(),
                 item.bookmark.id,
@@ -1209,7 +1168,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
 
             const group = provider.groups[item.groupIdx];
-            const removed = BookmarkManager.removeBookmark(
+            const removed = BookmarkManager.removeBookmarkFromGroup(
                 group,
                 item.fileUri.toString(),
                 item.bookmark.id
@@ -1217,7 +1176,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
             if (removed) {
                 provider.refresh();
-                vscode.window.setStatusBarMessage(`Bookmark removed`, 3000);
+                vscode.window.setStatusBarMessage(`\u2713 ${I18n.getMessage('bookmark.removedStatus')}`, 3000);
             }
         })
     );
@@ -1233,9 +1192,6 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
 
             let contextTitle = '';
             let itemsToProcess: (TempFolderItem | TempFileItem | BookmarkItem)[] = [];
-
-            // Debug logging for troubleshooting
-            console.log('[DEBUG] virtualTabs.copyGroupContext triggered');
 
             // Type guards using instanceof (safer than duck typing)
             const isBookmarkItem = (i: unknown): i is BookmarkItem => i instanceof BookmarkItem;
@@ -1267,7 +1223,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             }
 
             if (itemsToProcess.length === 0) {
-                vscode.window.showWarningMessage('Please select a group, file, or bookmark.');
+                vscode.window.showWarningMessage(I18n.getMessage('message.pleaseSelectItem'));
                 return;
             }
 

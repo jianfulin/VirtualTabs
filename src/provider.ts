@@ -1,12 +1,26 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as path from 'path';
 import { TempGroup, SortCriteria, DateGroup, VTBookmark } from './types';
 import { TempFileItem, TempFolderItem, BookmarkItem } from './treeItems';
 import { I18n } from './i18n';
-import { FileSorter } from './sorting';
-import { FileGrouper } from './grouping';
-import { BookmarkManager } from './bookmarks';
+import { FileSorter } from './core/FileSorter';
+import { AutoGrouper } from './core/AutoGrouper';
+import { BookmarkManager } from './core/BookmarkManager';
+import { GroupManager, OptimisticLockError } from './core/GroupManager';
+import { PathUtils } from './core/PathUtils';
+
+/**
+ * Type-safe helper to extract a URI from a VS Code Tab's input.
+ * Handles TextInput, Notebook, and Custom tab types without unsafe casts.
+ */
+function getTabUri(tab: vscode.Tab): vscode.Uri | undefined {
+    const input = tab.input;
+    if (input instanceof vscode.TabInputText) { return input.uri; }
+    if (input instanceof vscode.TabInputNotebook) { return input.uri; }
+    if (input instanceof vscode.TabInputCustom) { return input.uri; }
+    if (input instanceof vscode.TabInputTextDiff) { return input.modified; }
+    return undefined;
+}
 
 // TreeDataProvider implementation
 export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -24,7 +38,16 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
     // Flag to ignore file system events triggered by the extension itself
     private isInternalSaving: boolean = false;
 
-    constructor(context?: vscode.ExtensionContext) {
+    // Core module: group JSON read/write (no vscode dependency)
+    private groupManager: GroupManager | undefined;
+    // Last successfully loaded version number (for optimistic locking)
+    private loadedVersion: number = 0;
+
+    constructor(_context?: vscode.ExtensionContext) {
+        const root = this.getWorkspaceRootPath();
+        if (root) {
+            this.groupManager = new GroupManager(root);
+        }
         this.loadGroups();
         if (this.groups.length === 0) {
             this.initBuiltInGroup();
@@ -63,11 +86,6 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         // Filter all items of type TempFileItem
         const fileItems = selection.filter((item): item is TempFileItem => item instanceof TempFileItem);
 
-        // Log the number of selected items for debugging
-        if (fileItems.length > 0) {
-            console.log(`已選取 ${fileItems.length} 個檔案項目`);
-        }
-
         return fileItems;
     }
 
@@ -86,24 +104,29 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
     }
 
     private saveGroupsImmediate() {
-        const filePath = this.getStorageFilePath();
-        if (!filePath) {
+        if (!this.groupManager) {
             console.warn('Cannot save VirtualTabs data: workspace root not found');
             return;
         }
 
         try {
-            // Ensure .vscode directory exists
-            const dir = path.dirname(filePath);
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-
             const storageGroups = this.toStorageGroups(this.groups);
 
             // Set flag to ignore the next file system event
             this.isInternalSaving = true;
-            fs.writeFileSync(filePath, JSON.stringify(storageGroups, null, 2), 'utf8');
+            try {
+                this.groupManager.saveGroups(storageGroups, this.loadedVersion);
+                // Update version number
+                const { version } = this.groupManager.loadGroups();
+                this.loadedVersion = version;
+            } catch (err) {
+                if (err instanceof OptimisticLockError) {
+                    // Version conflict: externally modified, reload without overwriting
+                    console.warn('VirtualTabs: OptimisticLockError on save — external change detected, skipping write');
+                } else {
+                    throw err;
+                }
+            }
 
             // Reset flag after a short delay to ensure the event is captured
             setTimeout(() => {
@@ -123,8 +146,6 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             return;
         }
 
-        console.log('VirtualTabs: Detected external change to virtualTab.json, reloading UI...');
-
         // Option A: Silent reload of UI
         const success = this.loadGroups();
         if (success) {
@@ -140,7 +161,6 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Reset groups to default state (called when config file is deleted)
      */
     public resetToDefault() {
-        console.log('VirtualTabs: Resetting to default state...');
         this.groups = [];
         this.initBuiltInGroup();
         this.refresh(true); // Save to recreate the config file
@@ -149,31 +169,28 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
 
     private loadGroups(): boolean {
-        const filePath = this.getStorageFilePath();
-        if (filePath && fs.existsSync(filePath)) {
-            try {
-                const content = fs.readFileSync(filePath, 'utf8');
-                if (!content || content.trim() === '') return false;
+        if (!this.groupManager) return false;
+        try {
+            const { groups: saved, version } = this.groupManager.loadGroups();
+            if (saved.length === 0) return false;
 
-                const saved = JSON.parse(content);
-                if (this.validateGroups(saved)) {
-                    this.groups = this.fromStorageGroups(this.migrateGroups(saved));
-                    return true;
-                } else {
-                    console.error('VirtualTabs: Loaded data failed validation');
-                    vscode.window.showErrorMessage(I18n.getMessage('error.invalidConfigFormat') || 'Invalid format in virtualTab.json. Please check the file structure.');
-                    return false;
-                }
-            } catch (error) {
-                console.error('Failed to load VirtualTabs data file:', error);
-                vscode.window.showErrorMessage(`${I18n.getMessage('error.loadConfigFailed') || 'Failed to load virtualTab.json'}: ${error instanceof Error ? error.message : String(error)}`);
+            if (this.validateGroups(saved)) {
+                this.groups = this.fromStorageGroups(this.migrateGroups(saved));
+                this.loadedVersion = version;
+                return true;
+            } else {
+                console.error('VirtualTabs: Loaded data failed validation');
+                vscode.window.showErrorMessage(I18n.getMessage('error.invalidConfigFormat') || 'Invalid format in virtualTab.json. Please check the file structure.');
                 return false;
             }
+        } catch (error) {
+            console.error('Failed to load VirtualTabs data file:', error);
+            vscode.window.showErrorMessage(`${I18n.getMessage('error.loadConfigFailed') || 'Failed to load virtualTab.json'}: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
         }
-        return false;
     }
 
-    private validateGroups(data: any): data is TempGroup[] {
+    private validateGroups(data: unknown): data is TempGroup[] {
         if (!Array.isArray(data)) return false;
 
         for (let i = 0; i < data.length; i++) {
@@ -190,7 +207,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (g.files !== undefined) {
                 if (!Array.isArray(g.files)) return false;
                 const originalLength = g.files.length;
-                const validFiles = g.files.filter((f: any) => typeof f === 'string');
+                const validFiles = g.files.filter((f: unknown) => typeof f === 'string');
                 if (validFiles.length !== originalLength) {
                     console.warn(`VirtualTabs: Group "${g.name}" at index ${i} has ${originalLength - validFiles.length} invalid file entries (filtered out)`);
                 }
@@ -261,22 +278,8 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private toRelativePath(value: string, workspaceRoot: string): string {
         try {
-            if (this.isUriString(value) && !this.isWindowsDrivePath(value)) {
-                const uri = vscode.Uri.parse(value);
-                if (uri.scheme !== 'file') {
-                    return value;
-                }
-                const relativePath = path.relative(workspaceRoot, uri.fsPath);
-                // Normalize to forward slashes for cross-platform compatibility and JSON safety
-                return relativePath.replace(/\\/g, '/');
-            }
-
-            const absolutePath = path.isAbsolute(value)
-                ? value
-                : path.resolve(workspaceRoot, value);
-            const relativePath = path.relative(workspaceRoot, absolutePath);
-            // Normalize to forward slashes for cross-platform compatibility and JSON safety
-            return relativePath.replace(/\\/g, '/');
+            const pu = new PathUtils(workspaceRoot);
+            return pu.toRelativePath(value);
         } catch (error) {
             console.error('Failed to convert path to relative:', error);
             return value;
@@ -285,34 +288,14 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private toAbsoluteUri(value: string, workspaceRoot: string): string {
         try {
-            if (this.isUriString(value) && !this.isWindowsDrivePath(value)) {
-                return value;
-            }
-
-            const absolutePath = path.isAbsolute(value)
-                ? value
-                : path.resolve(workspaceRoot, value);
-            return vscode.Uri.file(absolutePath).toString();
+            const pu = new PathUtils(workspaceRoot);
+            // If already a file:// URI, return as-is
+            if (value.startsWith('file://')) return value;
+            return pu.toFileUri(pu.toAbsolutePath(value));
         } catch (error) {
             console.error('Failed to convert path to file URI:', error);
             return value;
         }
-    }
-
-    private isUriString(value: string): boolean {
-        return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value);
-    }
-
-    private isWindowsDrivePath(value: string): boolean {
-        return /^[a-zA-Z]:[\\/]/.test(value);
-    }
-
-    private getStorageFilePath(): string | undefined {
-        const workspaceRoot = this.getWorkspaceRootPath();
-        if (!workspaceRoot) {
-            return undefined;
-        }
-        return path.join(workspaceRoot, '.vscode', 'virtualTab.json');
     }
 
     private getWorkspaceRootPath(): string | undefined {
@@ -324,7 +307,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         // Get all open editor files
         const openUris = vscode.window.tabGroups.all
             .flatMap(g => g.tabs)
-            .map(tab => (tab.input as any)?.uri as vscode.Uri)
+            .map(tab => getTabUri(tab))
             .filter((uri): uri is vscode.Uri => !!uri)
             .map(uri => uri.toString());
         this.groups.unshift({
@@ -341,7 +324,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (builtIn) {
             const openUris = vscode.window.tabGroups.all
                 .flatMap(g => g.tabs)
-                .map(tab => (tab.input as any)?.uri as vscode.Uri)
+                .map(tab => getTabUri(tab))
                 .filter((uri): uri is vscode.Uri => !!uri)
                 .map(uri => uri.toString());
             builtIn.files = openUris;
@@ -448,23 +431,6 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.refresh();
     }
 
-    /**
-     * @deprecated Use removeGroupById instead
-     */
-    removeGroup(idx: number) {
-        // Cannot remove built-in group
-        if (this.groups[idx]?.builtIn) return;
-
-        const group = this.groups[idx];
-        if (group && group.id) {
-            this.removeGroupById(group.id);
-        } else {
-            // Fallback for limited cases
-            this.groups.splice(idx, 1);
-            this.refresh();
-        }
-    }
-
     addFilesToGroup(groupIdx: number, uris: string[]) {
         const group = this.groups[groupIdx];
         if (!group) return;
@@ -524,7 +490,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                 let openedCount = 0;
                 const step = 100 / total;
 
-                // 有序地開啟檔案，每次開啟後等待一小段時間
+                // Open files sequentially, waiting briefly after each
                 for (const uriStr of files) {
                     try {
                         const uri = vscode.Uri.parse(uriStr);
@@ -534,7 +500,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                             increment: step,
                             message: I18n.getMessage('progress.fileCount', openedCount.toString(), total.toString())
                         });
-                        // 給系統一點時間處理
+                        // Give the system a moment to settle
                         await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (e) {
                         console.error(I18n.getMessage('error.cannotOpenFile', uriStr), e);
@@ -554,7 +520,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         const files = group.id ? this.getAllFilesInGroupRecursive(group.id) : (group.files || []);
         if (files.length > 0) {
-            // 顯示進度通知
+            // Show progress notification
             vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: I18n.getMessage('progress.closingFiles', group.name),
@@ -564,13 +530,13 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                 let closedCount = 0;
                 const step = 100 / total;
 
-                // 轉換為 URI 對象
+                // Convert to URI objects
 
-                // 找出所有已開啟的標籤頁
+                // Find all open tabs matching the group's files
                 const tabsToClose: vscode.Tab[] = [];
                 vscode.window.tabGroups.all.forEach(tabGroup => {
                     tabGroup.tabs.forEach(tab => {
-                        const tabUri = (tab.input as any)?.uri;
+                        const tabUri = getTabUri(tab);
                         if (tabUri) {
                             const tabUriStr = tabUri.toString();
                             if (files.includes(tabUriStr)) {
@@ -580,7 +546,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                     });
                 });
 
-                // 逐一關閉標籤頁，每次關閉後等待一小段時間
+                // Close tabs one by one, waiting briefly after each
                 for (const tab of tabsToClose) {
                     try {
                         await vscode.window.tabGroups.close(tab);
@@ -589,7 +555,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                             increment: step,
                             message: I18n.getMessage('progress.fileCount', closedCount.toString(), tabsToClose.length.toString())
                         });
-                        // 給系統一點時間處理
+                        // Give the system a moment to settle
                         await new Promise(resolve => setTimeout(resolve, 50));
                     } catch (e) {
                         console.error(I18n.getMessage('error.cannotCloseTab'), e);
@@ -602,11 +568,11 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
-    // 開啟多個選取的檔案
+    // Open multiple selected files
     async openSelectedFiles(fileItems: TempFileItem[]) {
         if (fileItems.length === 0) return;
 
-        // 顯示進度通知
+        // Show progress notification
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: I18n.getMessage('progress.openingSelected'),
@@ -616,7 +582,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             let openedCount = 0;
             const step = 100 / total;
 
-            // 有序地開啟檔案
+            // Open files sequentially
             for (const item of fileItems) {
                 try {
                     await vscode.commands.executeCommand('vscode.open', item.uri);
@@ -625,7 +591,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                         increment: step,
                         message: I18n.getMessage('progress.fileCount', openedCount.toString(), total.toString())
                     });
-                    // 給系統一點時間處理
+                    // Give the system a moment to settle
                     await new Promise(resolve => setTimeout(resolve, 100));
                 } catch (e) {
                     console.error(I18n.getMessage('error.cannotOpenFile', item.uri.toString()), e);
@@ -634,11 +600,11 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
     }
 
-    // 關閉多個選取的檔案
+    // Close multiple selected files
     async closeSelectedFiles(fileItems: TempFileItem[]) {
         if (fileItems.length === 0) return;
 
-        // 顯示進度通知
+        // Show progress notification
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: I18n.getMessage('progress.closingSelected'),
@@ -650,18 +616,18 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
             const uriStrings = fileItems.map(item => item.uri.toString());
 
-            // 收集要關閉的標籤頁
+            // Collect tabs to close
             const tabsToClose: vscode.Tab[] = [];
             vscode.window.tabGroups.all.forEach(tabGroup => {
                 tabGroup.tabs.forEach(tab => {
-                    const tabUri = (tab.input as any)?.uri;
+                    const tabUri = getTabUri(tab);
                     if (tabUri && uriStrings.includes(tabUri.toString())) {
                         tabsToClose.push(tab);
                     }
                 });
             });
 
-            // 逐一關閉標籤頁
+            // Close tabs one by one
             for (const tab of tabsToClose) {
                 try {
                     await vscode.window.tabGroups.close(tab);
@@ -670,7 +636,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
                         increment: step,
                         message: I18n.getMessage('progress.fileCount', closedCount.toString(), tabsToClose.length.toString())
                     });
-                    // 給系統一點時間處理
+                    // Give the system a moment to settle
                     await new Promise(resolve => setTimeout(resolve, 50));
                 } catch (e) {
                     console.error(I18n.getMessage('error.cannotCloseTab'), e);
@@ -680,22 +646,22 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
     }
 
-    // 從群組中移除多個選取的檔案
+    // Remove multiple selected files from a group
     removeFilesFromGroup(groupIdx: number, fileItems: TempFileItem[]) {
         const group = this.groups[groupIdx];
         if (!group || !group.files || fileItems.length === 0) return;
 
-        // 確保所有選取的檔案都在指定群組中
+        // Ensure all selected files belong to the specified group
         const uriStrings = fileItems.map(item => item.uri.toString());
 
-        // 從指定群組中移除檔案
+        // Remove files from the specified group
         group.files = group.files.filter(uriStr => !uriStrings.includes(uriStr));
 
 
         this.refresh();
     }
 
-    // 將多個選取的檔案加入到指定群組
+    // Add multiple selected files to a specified group
     addMultipleFilesToGroup(groupIdx: number, fileItems: TempFileItem[]) {
         if (fileItems.length === 0) return;
 
@@ -791,7 +757,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         // Group by modified date
-        const dateGroups = FileGrouper.groupByModifiedDate(group.files);
+        const dateGroups = AutoGrouper.groupByModifiedDate(group.files);
 
         // Remove old auto groups related to this source group
         this.groups = this.groups.filter((g) => {
@@ -809,7 +775,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (files && files.length > 0) {
                 newGroups.push({
                     id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-                    name: `${I18n.getMessage('group.autoGroupPrefix')} ${FileGrouper.getDateGroupLabel(dateGroup, I18n)} @ ${group.name}`, // Naming: [Auto] Label @ Source
+                    name: `${I18n.getMessage('group.autoGroupPrefix')} ${AutoGrouper.getDateGroupLabel(dateGroup, I18n)} @ ${group.name}`, // Naming: [Auto] Label @ Source
                     files,
                     auto: true,
                     autoGroupType: 'modifiedDate',
@@ -902,7 +868,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             return items;
         }
 
-        // 若是檔案節點，顯示書籤 (v0.2.0)
+        // If it's a file node, show bookmarks (v0.2.0)
         if (element instanceof TempFileItem) {
             const group = this.groups[element.groupIdx];
             const bookmarks = BookmarkManager.getBookmarksForFile(

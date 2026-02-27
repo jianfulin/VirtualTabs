@@ -200,10 +200,21 @@ virtual-tabs/
 │   ├── provider.ts       # TreeDataProvider implementation and group management logic
 │   ├── dragAndDrop.ts    # Drag-and-drop controller (supports files, groups, directories)
 │   ├── commands.ts       # VS Code command registration and implementation
-│   ├── bookmarks.ts      # Bookmark management utilities
-│   ├── decorations.ts    # Editor decoration management (gutter icons)
 │   ├── i18n.ts           # Internationalization utilities
-│   └── index.ts          # Module export entry
+│   ├── util.ts           # UI utility (confirmation dialogs)
+│   ├── index.ts          # Module export entry
+│   ├── core/             # Shared business logic (single source of truth)
+│   │   ├── GroupManager.ts    # Group CRUD with optimistic locking
+│   │   ├── FileManager.ts     # File path validation & add/remove operations
+│   │   ├── BookmarkManager.ts # Bookmark CRUD (static + instance methods)
+│   │   ├── AutoGrouper.ts     # Auto-group by extension/date, sorting config
+│   │   ├── FileSorter.ts      # File URI sorting (name/path/ext/date)
+│   │   ├── PathUtils.ts       # Path conversion & workspace-scope validation
+│   │   ├── ProjectExplorer.ts # Workspace file/folder exploration
+│   │   └── index.ts           # Barrel re-export
+│   └── mcp/              # MCP UI components
+│       ├── McpConfigPanel.ts  # MCP config webview panel
+│       └── SkillGenerator.ts  # Agent skill file generation
 ├── package.json          # Extension description, commands, and menu configuration
 ├── package.nls.json      # English localization for package.json
 ├── package.nls.zh-tw.json # Traditional Chinese localization
@@ -224,12 +235,19 @@ virtual-tabs/
 | `extension.ts`      | Extension lifecycle management, initializes provider, drag-and-drop controller, and command registration | `activate()`, `deactivate()` |
 | `provider.ts`       | Implements `TreeDataProvider`, manages group data, file operations, sub-groups, and UI updates | `TempFoldersProvider` |
 | `treeItems.ts`      | Defines TreeView item classes, controls display behavior and contextValue | `TempFolderItem`, `TempFileItem`, `BookmarkItem` |
-| `types.ts`          | Defines shared data structures and interfaces    | `TempGroup`, `VTBookmark` |
+| `types.ts`          | Defines shared data structures and interfaces    | `TempGroup`, `VTBookmark`, `DateGroup` |
 | `dragAndDrop.ts`    | Implements drag-and-drop controller, handles file/group/directory drag operations | `TempFoldersDragAndDropController` |
 | `commands.ts`       | Registers and implements all VS Code commands, including group, file, bookmark, and clipboard operations | `registerCommands()` |
-| `bookmarks.ts`      | Bookmark management utilities (v0.2.0+)          | `BookmarkManager` |
-| `decorations.ts`    | Editor decoration management for bookmark gutter icons (v0.2.0+) | `DecorationManager` |
 | `i18n.ts`           | Internationalization utilities                   | `I18n` |
+| `util.ts`           | UI utility: confirmation dialogs with configurable settings | `executeWithConfirmation()` |
+| **`core/`**         | **Shared business logic — single source of truth for both the VS Code extension and the MCP server** | |
+| `core/GroupManager`  | Group CRUD with file-based optimistic locking    | `GroupManager`, `OptimisticLockError` |
+| `core/FileManager`   | File path validation, URI conversion, add/remove | `FileManager` |
+| `core/BookmarkManager` | Bookmark CRUD — static methods for in-memory ops, instance methods for MCP disk I/O | `BookmarkManager` |
+| `core/AutoGrouper`   | Auto-group by extension/date (6-bucket i18n-aware), sorting config | `AutoGrouper` |
+| `core/FileSorter`    | File URI sorting by name, path, extension, or modified date (no vscode dependency) | `FileSorter` |
+| `core/PathUtils`     | Path conversion (relative/absolute/URI) and workspace-scope validation | `PathUtils` |
+| `core/ProjectExplorer` | Workspace file/folder exploration with glob filtering | `ProjectExplorer` |
 
 ### Context Menu Configuration
 
@@ -609,9 +627,204 @@ npm version major  # Major version (0.0.1 → 1.0.0)
 
 ---
 
+## 🤖 MCP Server Development
+
+VirtualTabs ships a **bundled MCP (Model Context Protocol) server** that allows AI agents — Cursor, GitHub Copilot, Claude Desktop, Kiro, Antigravity — to manage file groups programmatically. This section explains the architecture, design decisions, and how to extend it.
+
+### The Three Pillars: Tool vs. Resource vs. Prompt
+
+The MCP specification defines three distinct primitives. Understanding the difference is critical before contributing to the server.
+
+| Primitive | Analogy | Triggered by | Nature | VirtualTabs Example |
+|:---|:---|:---|:---|:---|
+| **Tool** | 🦴 Hand — performs an action | AI decides when to call | Stateful, side-effectful | `create_group`, `add_files_to_group` |
+| **Resource** | 📖 Reference book — supplies context | AI reads on demand | Read-only, static snapshot | `virtualtabs://docs/complete` |
+| **Prompt** | 🧠 SOP template — encodes a workflow | User explicitly invokes | Parameterized workflow chain | `virtualtabs:organize`, `virtualtabs:cleanup` |
+
+**Decision rule:**
+
+* Want the AI to **do** something? → **Tool**
+* Want the AI to **know** something? → **Resource**
+* Want the AI to **follow a workflow** SOP? → **Prompt**
+
+The following diagram shows how these three primitives fit into the broader VirtualTabs stack:
+
+```mermaid
+graph LR
+    subgraph "IDE Layer (VS Code)"
+        VS[VS Code Editor]
+        EX[VirtualTabs Extension]
+        VS -. reads .-> VT_JSON[".vscode/virtualTab.json"]
+    end
+
+    subgraph "Agent / Skill Layer"
+        Agent[AI Agent]
+        Skill[Skill / Workflow file]
+        Agent -- invokes --> Skill
+        Skill -- guides reasoning --> Agent
+        Agent -- reads --> Resource
+        Agent -- triggers --> Prompt
+    end
+
+    subgraph "MCP Capability Layer (server.ts)"
+        direction TB
+        subgraph "📖 Eyes  —  Resource"
+            Resource["virtualtabs://docs/complete\n(Schema + Safety Rules + Workflows)"]
+        end
+        subgraph "🧠 Brain  —  Prompt"
+            Prompt["virtualtabs:organize\nvirtualtabs:cleanup"]
+        end
+        subgraph "🦴 Hands  —  Tools"
+            Tool1["create_group"]
+            Tool2["add_files_to_group"]
+            Tool3["...15 more tools"]
+        end
+        Tool1 -- writes --> VT_JSON
+        Tool2 -- writes --> VT_JSON
+    end
+
+    VS -- renders groups --> EX
+    Agent -- executes --> Tool1
+    Agent -- executes --> Tool2
+    Prompt -- defines steps --> Agent
+```
+
+#### Tools — Design Guidelines
+
+Each tool is defined in `TOOL_DEFS` in `mcp-server/src/server.ts` and routed to a typed manager class.
+
+```
+server.ts → TOOL_DEFS (schema + description) → CallToolRequestSchema handler → *Tools class → Manager class
+```
+
+**Best practices:**
+
+* **Atomic**: one tool does exactly one thing. `rename_group` must not implicitly delete.
+* **Descriptive names and descriptions**: the AI selects tools based solely on their `name` and `description`. Write them to be self-explanatory and "inviting" — e.g. `add_files_to_group`: *"Use when the user wants to organize specific files into a group."*
+* **Zod schemas**: define input schemas using Zod in `TOOL_DEFS`; they are automatically converted to JSON Schema and sent to the client.
+* **Safety tools**: `validate_json_structure` and `append_group_to_json` exist as Layer 3 fallbacks. They enforce workspace-relative paths and auto-backup. No direct `virtualTab.json` writes should bypass these checks.
+
+#### Resources — Design Guidelines
+
+The single registered resource is `virtualtabs://docs/complete` (a Markdown document). It consolidates:
+
+1. The full JSON schema of `virtualTab.json`
+2. Safety rules (built-in group protection, UUID requirement, relative path enforcement)
+3. Common workflow recipes
+
+**Why one consolidated resource instead of many?**
+
+A single resource means the AI reads all context in one shot, reducing the risk of it acting on partial information. Smaller, fragmented resources (e.g., a separate schema resource and a separate rules resource) increase the chance the AI skips one. When in doubt, keep resources unified and well-sectioned.
+
+**Resource update checklist:**
+
+* When adding a new field to `virtualTab.json`, update `SCHEMA_CONTENT`.
+* When adding a new safety constraint, update the numbered Safety Rules list.
+* When adding a new common workflow, add it to the "Common Workflows" section.
+
+#### Prompts — Design Guidelines
+
+Prompts are pre-scripted workflow templates that the *user* explicitly invokes (e.g., via `/virtualtabs:organize` in the chat input). They chain together static knowledge (Resources) and dynamic capability (Tools) into a guided Task.
+
+Currently registered prompts:
+
+| Name | Description | Parameters |
+|:---|:---|:---|
+| `virtualtabs:organize` | Guide AI to reorganize groups using a specified strategy | `strategy`: `"by-feature"` \| `"by-type"` \| `"by-layer"` |
+| `virtualtabs:cleanup` | Guide AI to remove invalid (deleted/moved) file references | — |
+
+**Best practices for new prompts:**
+
+* Include **Chain-of-Thought** steps (1. list, 2. explore, 3. propose, 4. execute, 5. verify) rather than a single open-ended instruction.
+* Make prompts **parameterized** where meaningful — e.g., `strategy` in `virtualtabs:organize`.
+* Prompts should *reference* what the AI already knows from the Resource and *orchestrate* Tool calls rather than re-explaining everything inline.
+
+---
+
+### MCP Server Module Structure
+
+```
+mcp-server/
+├── src/
+│   ├── index.ts          # Entry point: parses CLI args, starts stdio transport
+│   ├── server.ts         # Core: registers all Tools, Prompts, Resources, Logging, Roots
+│   ├── managers/         # Thin wrappers that delegate to src/core/ (shared library)
+│   ├── tools/            # Tool handler classes (GroupTools, FileTools, etc.)
+│   └── utils/            # zodToJsonSchema converter, PathUtils
+├── (compiled to dist/mcp/index.js via esbuild, bundled into .vsix)
+```
+
+**Shared Core Library** (`src/core/`)
+
+Business logic for group management, file operations, bookmarks, path utilities, and project exploration lives in `src/core/` and is shared between:
+
+* The **VS Code extension** (`src/provider.ts`, `src/commands.ts`, etc.)
+* The **MCP server** (`mcp-server/src/managers/`)
+
+This prevents logic drift: fixing a bug in `GroupManager.ts` fixes it for both the UI and all AI agents simultaneously. Never add business logic directly into `mcp-server/src/managers/` — extend `src/core/` instead.
+
+---
+
+### Agent Skill Generation
+
+The command **`VirtualTabs: Generate Agent Skill`** (implemented in `src/mcp/SkillGenerator.ts`) produces a target-specific skill file co-located with the user's MCP configuration:
+
+| Target | Output file | MCP config location |
+|:---|:---|:---|
+| Cursor | `.cursor/rules/virtualtabs.mdc` | `.cursor/mcp.json` |
+| GitHub Copilot | `.github/virtualtabs-skill.md` | `.vscode/mcp.json` |
+| Claude Desktop | `.claude/virtualtabs-skill.md` | `claude_desktop_config.json` |
+| Kiro IDE | `.kiro/virtualtabs-skill.md` | `.kiro/mcp.json` |
+| Antigravity | `.agents/virtualtabs-skill.md` | `.vscode/mcp.json` |
+
+Each skill file contains:
+
+1. **CRITICAL CONCEPT block** — clarifies that VirtualTabs groups are *purely virtual* (no files moved on disk). This addresses the most common agent misunderstanding.
+2. **MCP server setup block** — copy-pasteable config for the target tool.
+3. **Tool catalogue** — concise API reference for all 17 tools.
+4. **Four-layer safety decision tree**:
+   * Layer 1: Use MCP tools (preferred)
+   * Layer 2: Use safety MCP tools (`validate_json_structure`, `append_group_to_json`)
+   * Layer 3: Fall back to `vt.bundle.js` CLI
+   * Layer 4: Report failure to the user
+
+The `vt.bundle.js` CLI is embedded as a base64 blob inside the extension and written to disk alongside the skill file during generation. It is built from `vt-entry.ts` via `scripts/bundle-vt.ts` (esbuild) and supports:
+
+```bash
+node vt.bundle.js list-groups
+node vt.bundle.js add-group --name "My Group"
+node vt.bundle.js add-files --group "My Group" src/a.ts src/b.ts
+node vt.bundle.js remove-group --name "My Group"
+```
+
+---
+
+### How to Add a New MCP Tool
+
+1. **Add business logic** to the appropriate class in `src/core/` (or create a new one).
+2. **Add schema + description** to `TOOL_DEFS` in `mcp-server/src/server.ts`:
+
+   ```typescript
+   my_new_tool: {
+     description: 'What the AI should understand about when to call this.',
+     schema: {
+       param1: z.string().describe('Description of param1.'),
+     },
+   },
+   ```
+
+3. **Add a route** in the `CallToolRequestSchema` handler's `switch` block.
+4. **Create a handler method** in the appropriate `*Tools` class under `mcp-server/src/tools/`.
+5. **Update `CONSOLIDATED_CONTENT`** (the Resource) with the new tool's description so AI agents discover it during context loading.
+6. **Update the skill template** in `SkillGenerator.ts` if the tool is important enough to surface in the generated skill files.
+
+---
+
 ## 📚 Resources
 
 * [VS Code Extension API](https://code.visualstudio.com/api)
 * [VS Code Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
 * [TreeView API Documentation](https://code.visualstudio.com/api/extension-guides/tree-view)
 * [Drag and Drop API](https://code.visualstudio.com/api/references/vscode-api#TreeDragAndDropController)
+* [Model Context Protocol Specification](https://modelcontextprotocol.io/docs)
+* [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)

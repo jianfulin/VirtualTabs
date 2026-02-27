@@ -17,7 +17,6 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(async (e) => {
             if (e.affectsConfiguration('locale')) {
-                console.log('Language configuration changed, reloading i18n...');
                 await I18n.reload(context);
             }
         })
@@ -76,7 +75,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Listen for editor file open/close events to auto-refresh the tree view
     context.subscriptions.push(
         vscode.window.onDidChangeVisibleTextEditors(() => {
-            console.log('Visible text editors changed, refreshing tree view...');
             provider.refresh();
         })
     );
@@ -94,7 +92,6 @@ export async function activate(context: vscode.ExtensionContext) {
         watcher.onDidChange(() => provider.onExternalFileChange());
         watcher.onDidCreate(() => provider.onExternalFileChange());
         watcher.onDidDelete(() => {
-            console.log('VirtualTabs: Config file deleted, resetting to default state...');
             provider.resetToDefault();
             const msg = I18n.getMessage('message.configDeleted') || 'VirtualTabs: Config file deleted. Groups reset to default.';
             vscode.window.showWarningMessage(msg);

@@ -1,0 +1,198 @@
+/**
+ * GroupManager
+ *
+ * Handles group CRUD operations, hierarchy management, sorting and movement.
+ * Implements optimistic locking: version = file mtimeMs, effective across processes.
+ *
+ * Requirements: 1.3, 1.4
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { TempGroup } from '../types.js';
+
+/** Version conflict on concurrent write; caller should reload via loadGroups and retry */
+export class OptimisticLockError extends Error {
+  constructor() {
+    super('Version conflict: file was modified by another process — please reload and retry');
+    this.name = 'OptimisticLockError';
+  }
+}
+
+export class GroupManager {
+  private configPath: string;
+  private cachedGroups: TempGroup[] | null = null;
+  private lastModified: number = 0;
+
+  constructor(private readonly workspaceRoot: string) {
+    // Config file path: .vscode/virtualTab.json
+    this.configPath = path.join(workspaceRoot, '.vscode', 'virtualTab.json');
+  }
+
+  /**
+   * Get the workspace root path
+   */
+  getWorkspaceRoot(): string {
+    return this.workspaceRoot;
+  }
+
+  /**
+   * Load groups (optimistic locking).
+   * Returns the version number (= file mtimeMs) for saveGroups to verify.
+   * Multiple readers can operate fully concurrently with no waiting.
+   *
+   * @returns { groups, version }
+   */
+  loadGroups(): { groups: TempGroup[]; version: number } {
+    try {
+      // Check if the config file exists
+      if (!fs.existsSync(this.configPath)) {
+        this.createDefaultConfig();
+        return { groups: [], version: this.lastModified };
+      }
+
+      const stats = fs.statSync(this.configPath);
+
+      // Cache hit: return a deep clone to prevent callers from mutating the cache
+      if (this.cachedGroups && stats.mtimeMs === this.lastModified) {
+        return { groups: structuredClone(this.cachedGroups), version: this.lastModified };
+      }
+
+      // Read and parse the config file
+      const content = fs.readFileSync(this.configPath, 'utf8');
+      const groups = JSON.parse(content) as TempGroup[];
+
+      // Update cache
+      this.cachedGroups = groups;
+      this.lastModified = stats.mtimeMs;
+
+      return { groups, version: stats.mtimeMs };
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        this.handleCorruptedConfig();
+        return { groups: [], version: this.lastModified };
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Save groups (optimistic locking).
+   * Before writing, compares version against the on-disk mtimeMs:
+   *   - Match → write and update cache
+   *   - Mismatch → throw OptimisticLockError (caller should reload and retry)
+   *
+   * @param groups  Array of groups
+   * @param version Version number obtained from loadGroups()
+   * @throws OptimisticLockError
+   */
+  saveGroups(groups: TempGroup[], version: number): void {
+    try {
+      // Ensure .vscode directory exists
+      const vscodePath = path.dirname(this.configPath);
+      if (!fs.existsSync(vscodePath)) {
+        fs.mkdirSync(vscodePath, { recursive: true });
+      }
+
+      // Ensure config file exists
+      if (!fs.existsSync(this.configPath)) {
+        fs.writeFileSync(this.configPath, '[]', 'utf8');
+      }
+
+      // Version conflict check: compare on-disk mtime
+      const currentMtime = fs.statSync(this.configPath).mtimeMs;
+      if (currentMtime !== version) {
+        throw new OptimisticLockError();
+      }
+
+      // Write config file
+      const content = JSON.stringify(groups, null, 2);
+      fs.writeFileSync(this.configPath, content, 'utf8');
+
+      // Update cache
+      this.cachedGroups = groups;
+      this.lastModified = fs.statSync(this.configPath).mtimeMs;
+    } catch (error) {
+      if (error instanceof OptimisticLockError) throw error;
+      throw new Error(`Failed to save config file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Find a group by ID
+   *
+   * @param groupId Group ID
+   * @returns The group object, or undefined if not found
+   */
+  findGroupById(groupId: string): TempGroup | undefined {
+    const { groups } = this.loadGroups();
+    return this.findGroupByIdRecursive(groups, groupId);
+  }
+
+  /**
+   * Recursively find a group (including subgroups)
+   */
+  private findGroupByIdRecursive(groups: TempGroup[], groupId: string): TempGroup | undefined {
+    for (const group of groups) {
+      if (group.id === groupId) {
+        return group;
+      }
+
+      const childGroups = groups.filter(g => g.parentGroupId === group.id);
+      if (childGroups.length > 0) {
+        const found = this.findGroupByIdRecursive(childGroups, groupId);
+        if (found) {
+          return found;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Create default config (with file locking)
+   */
+  private createDefaultConfig(): void {
+    try {
+      const vscodePath = path.dirname(this.configPath);
+      if (!fs.existsSync(vscodePath)) {
+        fs.mkdirSync(vscodePath, { recursive: true });
+      }
+
+      const defaultGroups: TempGroup[] = [];
+      const content = JSON.stringify(defaultGroups, null, 2);
+      fs.writeFileSync(this.configPath, content, 'utf8');
+
+      this.cachedGroups = defaultGroups;
+      const stats = fs.statSync(this.configPath);
+      this.lastModified = stats.mtimeMs;
+    } catch (error) {
+      throw new Error(`Failed to create default config: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Handle a corrupted config file
+   */
+  private handleCorruptedConfig(): void {
+    try {
+      if (fs.existsSync(this.configPath)) {
+        const backupPath = `${this.configPath}.backup.${Date.now()}`;
+        fs.copyFileSync(this.configPath, backupPath);
+        console.error(`Config file corrupted, backup created: ${backupPath}`);
+      }
+      this.createDefaultConfig();
+    } catch (error) {
+      console.error(`Error handling corrupted config: ${error}`);
+    }
+  }
+
+  /**
+   * Clear cache (for testing or forced reload)
+   */
+  clearCache(): void {
+    this.cachedGroups = null;
+    this.lastModified = 0;
+  }
+}

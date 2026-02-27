@@ -1,0 +1,248 @@
+import { GroupManager } from './GroupManager.js';
+import { FileManager } from './FileManager.js';
+import { VTBookmark, BookmarkInfo, TempGroup } from '../types.js';
+
+/**
+ * BookmarkManager
+ *
+ * Instance methods  → MCP layer (stateless disk I/O per operation)
+ * Static methods    → VS Code layer (in-memory TempGroup mutation)
+ */
+export class BookmarkManager {
+  constructor(
+    private groupManager: GroupManager,
+    private fileManager: FileManager
+  ) {}
+
+  // ─── Static utility methods (single source of truth) ───
+
+  /** Generate a unique bookmark ID */
+  private static generateId(): string {
+    return `bm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  /**
+   * Create a bookmark data object (in-memory only, does NOT persist).
+   */
+  static createBookmarkObject(
+    line: number,
+    label: string,
+    character?: number,
+    description?: string
+  ): VTBookmark {
+    return {
+      id: BookmarkManager.generateId(),
+      line,
+      character,
+      label,
+      description,
+      created: Date.now()
+    };
+  }
+
+  /** Add a bookmark to a group's in-memory data */
+  static addBookmarkToGroup(group: TempGroup, fileUri: string, bookmark: VTBookmark): void {
+    if (!group.bookmarks) group.bookmarks = {};
+    if (!group.bookmarks[fileUri]) group.bookmarks[fileUri] = [];
+    group.bookmarks[fileUri].push(bookmark);
+  }
+
+  /** Return a copy with the label updated */
+  static updateLabel(bookmark: VTBookmark, newLabel: string): VTBookmark {
+    return { ...bookmark, label: newLabel, modified: Date.now() };
+  }
+
+  /** Return a copy with the description updated */
+  static updateDescription(bookmark: VTBookmark, newDescription: string | undefined): VTBookmark {
+    return { ...bookmark, description: newDescription, modified: Date.now() };
+  }
+
+  /** Replace a bookmark in the group's in-memory data. Returns true if found. */
+  static updateBookmarkInGroup(
+    group: TempGroup,
+    fileUri: string,
+    bookmarkId: string,
+    updatedBookmark: VTBookmark
+  ): boolean {
+    if (!group.bookmarks || !group.bookmarks[fileUri]) return false;
+    const index = group.bookmarks[fileUri].findIndex(b => b.id === bookmarkId);
+    if (index === -1) return false;
+    group.bookmarks[fileUri][index] = updatedBookmark;
+    return true;
+  }
+
+  /** Remove a bookmark from the group's in-memory data. Returns true if found. */
+  static removeBookmarkFromGroup(
+    group: TempGroup,
+    fileUri: string,
+    bookmarkId: string
+  ): boolean {
+    if (!group.bookmarks || !group.bookmarks[fileUri]) return false;
+    const index = group.bookmarks[fileUri].findIndex(b => b.id === bookmarkId);
+    if (index === -1) return false;
+    group.bookmarks[fileUri].splice(index, 1);
+    if (group.bookmarks[fileUri].length === 0) delete group.bookmarks[fileUri];
+    return true;
+  }
+
+  /** Get all bookmarks for a file (sorted by line number) */
+  static getBookmarksForFile(group: TempGroup, fileUri: string): VTBookmark[] {
+    if (!group.bookmarks || !group.bookmarks[fileUri]) return [];
+    return [...group.bookmarks[fileUri]].sort((a, b) => a.line - b.line);
+  }
+
+  /** Find a bookmark by ID within a single group */
+  static findBookmarkInGroup(
+    group: TempGroup,
+    bookmarkId: string
+  ): { bookmark: VTBookmark; fileUri: string } | null {
+    if (!group.bookmarks) return null;
+    for (const [fileUri, bookmarks] of Object.entries(group.bookmarks)) {
+      const bookmark = bookmarks.find(b => b.id === bookmarkId);
+      if (bookmark) return { bookmark, fileUri };
+    }
+    return null;
+  }
+
+  /** Total bookmark count in a group */
+  static getTotalBookmarkCount(group: TempGroup): number {
+    if (!group.bookmarks) return 0;
+    return Object.values(group.bookmarks).reduce((t, bms) => t + bms.length, 0);
+  }
+
+  /** Number of files that have bookmarks in a group */
+  static getFilesWithBookmarksCount(group: TempGroup): number {
+    if (!group.bookmarks) return 0;
+    return Object.keys(group.bookmarks).length;
+  }
+
+  // ─── Instance methods (MCP layer — load/mutate/save) ───
+
+  /**
+   * Create a bookmark
+   */
+  createBookmark(
+    groupId: string,
+    filePath: string,
+    line: number,
+    label: string,
+    description?: string
+  ): VTBookmark {
+    const { groups, version } = this.groupManager.loadGroups();
+    const groupIndex = groups.findIndex(g => g.id === groupId);
+
+    if (groupIndex === -1) {
+      throw new Error(`Group ID "${groupId}" does not exist`);
+    }
+
+    const group = groups[groupIndex];
+    if (line < 0) {
+      throw new Error('Line number must not be negative');
+    }
+    if (!label || label.trim() === '') {
+      throw new Error('Bookmark label must not be empty');
+    }
+
+    const fileUri = this.fileManager.toFileUri(filePath);
+
+    if (!group.files || !group.files.includes(fileUri)) {
+      throw new Error(`File is not in group "${group.name}"`);
+    }
+
+    const newBookmark = BookmarkManager.createBookmarkObject(line, label, undefined, description);
+    BookmarkManager.addBookmarkToGroup(group, fileUri, newBookmark);
+    this.groupManager.saveGroups(groups, version);
+
+    return newBookmark;
+  }
+
+  /**
+   * Delete a bookmark
+   */
+  deleteBookmark(bookmarkId: string): boolean {
+    const { groups, version } = this.groupManager.loadGroups();
+    let deleted = false;
+
+    for (const group of groups) {
+      if (!group.bookmarks) continue;
+
+      for (const [fileUri, bookmarks] of Object.entries(group.bookmarks)) {
+        const index = bookmarks.findIndex(bm => bm.id === bookmarkId);
+        if (index !== -1) {
+          bookmarks.splice(index, 1);
+          if (bookmarks.length === 0) {
+            delete group.bookmarks[fileUri];
+          }
+          deleted = true;
+          break;
+        }
+      }
+      if (deleted) break;
+    }
+
+    if (deleted) {
+      this.groupManager.saveGroups(groups, version);
+    }
+
+    return deleted;
+  }
+
+  /**
+   * List bookmark information
+   */
+  listBookmarks(groupId?: string): BookmarkInfo[] {
+    const { groups } = this.groupManager.loadGroups();
+    const results: BookmarkInfo[] = [];
+
+    const targetGroups = groupId
+      ? groups.filter(g => g.id === groupId)
+      : groups;
+
+    for (const group of targetGroups) {
+      if (!group.bookmarks) continue;
+
+      for (const [fileUri, bookmarks] of Object.entries(group.bookmarks)) {
+        const filePath = this.fileManager.fromFileUri(fileUri);
+
+        for (const bm of bookmarks) {
+          results.push({
+            id: bm.id,
+            groupId: group.id,
+            groupName: group.name,
+            filePath,
+            line: bm.line,
+            label: bm.label,
+            description: bm.description,
+            created: bm.created
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Find and return bookmark details by ID
+   */
+  findBookmarkById(bookmarkId: string): { bookmark: VTBookmark; groupId: string; filePath: string } | undefined {
+    const { groups } = this.groupManager.loadGroups();
+
+    for (const group of groups) {
+      if (!group.bookmarks) continue;
+
+      for (const [fileUri, bookmarks] of Object.entries(group.bookmarks)) {
+        const found = bookmarks.find(bm => bm.id === bookmarkId);
+        if (found) {
+          return {
+            bookmark: found,
+            groupId: group.id,
+            filePath: this.fileManager.fromFileUri(fileUri)
+          };
+        }
+      }
+    }
+
+    return undefined;
+  }
+}
