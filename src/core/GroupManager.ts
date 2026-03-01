@@ -126,28 +126,9 @@ export class GroupManager {
    */
   findGroupById(groupId: string): TempGroup | undefined {
     const { groups } = this.loadGroups();
-    return this.findGroupByIdRecursive(groups, groupId);
-  }
-
-  /**
-   * Recursively find a group (including subgroups)
-   */
-  private findGroupByIdRecursive(groups: TempGroup[], groupId: string): TempGroup | undefined {
-    for (const group of groups) {
-      if (group.id === groupId) {
-        return group;
-      }
-
-      const childGroups = groups.filter(g => g.parentGroupId === group.id);
-      if (childGroups.length > 0) {
-        const found = this.findGroupByIdRecursive(childGroups, groupId);
-        if (found) {
-          return found;
-        }
-      }
-    }
-
-    return undefined;
+    // Flat scan: all groups (including subgroups) live in a single top-level
+    // array with parentGroupId references, so recursion is unnecessary.
+    return groups.find(g => g.id === groupId);
   }
 
   /**

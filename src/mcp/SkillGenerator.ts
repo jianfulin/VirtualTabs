@@ -22,13 +22,6 @@ export class SkillGenerator {
         return path.join(extensionPath, 'dist', 'mcp', 'index.js').replace(/\\/g, '/');
     }
 
-    public static getSkillFilePaths(projectRoot: string): { cursorRulePath: string; vscodeSkillPath: string } {
-        return {
-            cursorRulePath: path.join(projectRoot, '.cursor', 'rules', 'virtualtabs.mdc'),
-            vscodeSkillPath: path.join(projectRoot, '.vscode', 'skills', 'virtualtabs', 'SKILL.md'),
-        };
-    }
-
     public static async generateSkill(context: vscode.ExtensionContext): Promise<SkillGenerationResult> {
         const projectRoot = this.getProjectRoot();
         if (!projectRoot) {

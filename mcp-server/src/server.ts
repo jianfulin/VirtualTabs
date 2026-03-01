@@ -27,7 +27,7 @@ import * as fs from 'fs';
 import { z } from 'zod';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { zodToJsonSchema } from './utils/zodToJsonSchema.js';
-import { normalizeFilesParam } from './utils/normalizeParams.js';
+import { normalizeFilesParam, coerceArgs } from './utils/normalizeParams.js';
 import { TempGroup } from './types.js';
 import { GroupManager } from './managers/GroupManager.js';
 import { FileManager } from './managers/FileManager.js';
@@ -467,9 +467,14 @@ export class VirtualTabsMCPServer {
     }
   }
 
-  /** Parse and validate tool arguments through the tool's Zod schema. */
+  /**
+   * Parse and validate tool arguments through the tool's Zod schema.
+   * Pre-coerces string values to numbers/arrays for MCP clients (e.g. Kiro)
+   * that serialise all arguments as strings.
+   */
   private parseArgs<S extends z.ZodRawShape>(schema: S, args: unknown): z.infer<z.ZodObject<S>> {
-    return z.object(schema).parse(args ?? {});
+    const coerced = coerceArgs((args ?? {}) as Record<string, unknown>, schema as Record<string, unknown>);
+    return z.object(schema).parse(coerced);
   }
 
   // ── Register all MCP handlers ─────────────────────────────────────────────────
@@ -528,8 +533,8 @@ export class VirtualTabsMCPServer {
                 else if (seenIds.has(g.id)) { errors.push(`Duplicate id "${g.id}" at index ${i}.`); }
                 else { seenIds.add(g.id); }
                 if (!g.name) { errors.push(`Group[${i}] missing "name".`); }
-                if (!Array.isArray(g.files)) {
-                  errors.push(`Group "${g.name ?? i}" missing "files" array.`);
+                if (g.files !== undefined && !Array.isArray(g.files)) {
+                  errors.push(`Group "${g.name ?? i}" has invalid "files" (expected array or undefined).`);
                 } else {
                   for (const f of g.files) {
                     if (path.isAbsolute(f)) {

@@ -276,10 +276,21 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         return result;
     }
 
+    /** Cached PathUtils instance per workspace root (avoids repeated allocations). */
+    private pathUtilsCache: { root: string; instance: PathUtils } | undefined;
+
+    private getPathUtils(workspaceRoot: string): PathUtils {
+        if (this.pathUtilsCache && this.pathUtilsCache.root === workspaceRoot) {
+            return this.pathUtilsCache.instance;
+        }
+        const instance = new PathUtils(workspaceRoot);
+        this.pathUtilsCache = { root: workspaceRoot, instance };
+        return instance;
+    }
+
     private toRelativePath(value: string, workspaceRoot: string): string {
         try {
-            const pu = new PathUtils(workspaceRoot);
-            return pu.toRelativePath(value);
+            return this.getPathUtils(workspaceRoot).toRelativePath(value);
         } catch (error) {
             console.error('Failed to convert path to relative:', error);
             return value;
@@ -288,7 +299,7 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private toAbsoluteUri(value: string, workspaceRoot: string): string {
         try {
-            const pu = new PathUtils(workspaceRoot);
+            const pu = this.getPathUtils(workspaceRoot);
             // If already a file:// URI, return as-is
             if (value.startsWith('file://')) return value;
             return pu.toFileUri(pu.toAbsolutePath(value));

@@ -1,5 +1,9 @@
 /**
  * Shared parameter-normalisation helpers for MCP tool handlers.
+ *
+ * Some MCP clients (notably Kiro IDE) send every value as a string regardless
+ * of the declared JSON Schema type. The helpers below ensure robust handling
+ * of such type-coercion edge cases.
  */
 
 /**
@@ -20,4 +24,52 @@ export function normalizeFilesParam(value: string[] | string | undefined): strin
     }
   }
   return value;
+}
+
+/**
+ * Pre-process raw MCP tool arguments before Zod validation.
+ *
+ * Walks the Zod schema to discover which fields expect `number` or `array`,
+ * then coerces string values accordingly. This prevents Zod validation errors
+ * caused by MCP clients that serialise all arguments as strings.
+ */
+export function coerceArgs(args: Record<string, unknown>, schema: Record<string, unknown>): Record<string, unknown> {
+  if (!args || typeof args !== 'object') return args;
+  const result = { ...args };
+
+  for (const [key, zodType] of Object.entries(schema)) {
+    if (result[key] === undefined) continue;
+    const typeName = getZodTypeName(zodType);
+
+    // Coerce string → number
+    if (typeName === 'ZodNumber' && typeof result[key] === 'string') {
+      const num = Number(result[key]);
+      if (!Number.isNaN(num)) {
+        result[key] = num;
+      }
+    }
+
+    // Coerce string → array (JSON-encoded)
+    if (typeName === 'ZodArray' && typeof result[key] === 'string') {
+      try {
+        const parsed = JSON.parse(result[key] as string);
+        if (Array.isArray(parsed)) {
+          result[key] = parsed;
+        }
+      } catch {
+        // leave as-is; Zod will report the validation error
+      }
+    }
+  }
+  return result;
+}
+
+/** Extract the Zod typeName, unwrapping Optional/Default wrappers. */
+function getZodTypeName(zodType: unknown): string {
+  const def = (zodType as Record<string, unknown>)?._def as Record<string, unknown> | undefined;
+  const typeName = (def?.typeName as string) ?? '';
+  if (typeName === 'ZodOptional' || typeName === 'ZodDefault') {
+    return getZodTypeName(def?.innerType);
+  }
+  return typeName;
 }

@@ -66,8 +66,20 @@ function convertZodType(zodType: z.ZodTypeAny): Record<string, unknown> {
       return zodToJsonSchema(shape);
     }
 
+    case 'ZodUnion': {
+      // Zod union: def.options is an array of ZodType alternatives
+      const options = def.options as z.ZodTypeAny[] | undefined;
+      if (options && options.length > 0) {
+        return { anyOf: options.map(convertZodType), ...(description && { description }) };
+      }
+      return { type: 'string', ...(description && { description }) };
+    }
+
     default:
-      // fallback
+      // fallback — log a warning so schema gaps are discoverable
+      if (typeof console !== 'undefined') {
+        console.warn(`[zodToJsonSchema] Unhandled Zod type "${typeName}", falling back to { type: 'string' }`);
+      }
       return { type: 'string', ...(description && { description }) };
   }
 }

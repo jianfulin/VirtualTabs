@@ -6,6 +6,10 @@
  * - Persist workspace path across sessions (~/.virtualtabs-mcp-state.json)
  * - Initialise VirtualTabsMCPServer (supports MCP Roots protocol)
  * - Create the stdio transport and connect
+ *
+ * NOTE: All logging in this file uses console.error() intentionally — the MCP
+ * protocol reserves stdout exclusively for JSON-RPC messages; stderr is the
+ * correct channel for human-readable log output.
  */
 
 import * as fs from 'fs';
