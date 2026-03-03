@@ -25,6 +25,8 @@
 | **檔案分組** | 僅限資料夾結構 | **邏輯導向** (支援跨目錄) |
 | **AI 上下文** | 需手動一一收集 | **一鍵生成** 給 LLM 的上下文 |
 
+![VirtualTabs 虛擬與實體檔案系統概念圖](docs/assets/virtual_vs_physical_concept.png)
+
 ---
 
 ### 🧩 解決開發中的痛點

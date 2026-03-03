@@ -1,4 +1,37 @@
 import * as vscode from 'vscode';
+import { TempGroup } from './types';
+
+/**
+ * Get all files from a group and all its nested child groups (recursive).
+ * Uses a visited-Set to prevent infinite loops from circular parent references.
+ * Returns a de-duplicated list of file URI strings.
+ */
+export function getAllFilesInGroupRecursive(groups: TempGroup[], groupId: string): string[] {
+    const files = new Set<string>();
+    const visited = new Set<string>();
+
+    const collect = (currentId: string) => {
+        if (visited.has(currentId)) { return; }
+        visited.add(currentId);
+
+        const group = groups.find(g => g.id === currentId);
+        if (!group) { return; }
+
+        if (group.files) {
+            for (const uri of group.files) {
+                files.add(uri);
+            }
+        }
+
+        const children = groups.filter(g => g.parentGroupId === currentId);
+        for (const child of children) {
+            if (child.id) { collect(child.id); }
+        }
+    };
+
+    collect(groupId);
+    return Array.from(files);
+}
 
 /**
  * Executes an action after prompting for confirmation, based on user configuration.

@@ -25,6 +25,8 @@
 | **Grouping** | Folder-based only | **Logic-based** (Cross-directory support) |
 | **AI Context** | Hard to gather manually | **One-click context generation** for LLMs |
 
+![VirtualTabs vs Physical File System](docs/assets/virtual_vs_physical_concept.png)
+
 ---
 
 ### 🧩 Solving Modern Workflow Pain Points
