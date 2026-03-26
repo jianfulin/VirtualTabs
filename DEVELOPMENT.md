@@ -287,6 +287,10 @@ The following table defines the availability of commands across different item t
 | Delete File (Disk) | ❌ | ❌ | ✔ | ❌ | ❌ |
 | Reveal in OS | ❌ | ❌ | ✔ | ✔ | ✔ |
 | Run File (Inline) | ❌ | ❌ | ✔ (.bat/.exe) | ✔ (.bat/.exe) | ❌ |
+| **[Close Operations]** | | | | | |
+| Close File (Inline) | ❌ | ❌ | ❌ | ✔ `(v0.4.6)` | ❌ |
+| Close Selected | ❌ | ❌ | ✔ | ✔ | ❌ |
+| Close All Files | ✔ | ❌ | ❌ | ❌ | ❌ |
 | **[Organization]** | | | | | |
 | Sort Files Submenu | ✔ | ✔ | ❌ | ❌ | ❌ |
 | Auto Group by Extension | ✔ | ✔ | ❌ | ❌ | ❌ |
@@ -302,7 +306,6 @@ The following table defines the availability of commands across different item t
 | Edit Label | ❌ | ❌ | ❌ | ❌ | ✔ |
 | Edit Description | ❌ | ❌ | ❌ | ❌ | ✔ |
 | Remove Bookmark (Inline) | ❌ | ❌ | ❌ | ❌ | ✔ |
-| Close File | ❌ | ❌ | ❌ | ❌ | ✔ |
 
 #### Multi-Selection Behavior
 

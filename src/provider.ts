@@ -766,6 +766,31 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         });
     }
 
+    // Close a single file (inline action)
+    async closeFile(fileItem: TempFileItem) {
+        if (!(fileItem instanceof TempFileItem)) return;
+
+        const uriStr = fileItem.uri.toString();
+        const tabsToClose: vscode.Tab[] = [];
+
+        vscode.window.tabGroups.all.forEach(tabGroup => {
+            tabGroup.tabs.forEach(tab => {
+                const tabUri = getTabUri(tab);
+                if (tabUri && tabUri.toString() === uriStr) {
+                    tabsToClose.push(tab);
+                }
+            });
+        });
+
+        for (const tab of tabsToClose) {
+            try {
+                await vscode.window.tabGroups.close(tab);
+            } catch (e) {
+                console.error(I18n.getMessage('error.cannotCloseTab'), e);
+            }
+        }
+    }
+
     // Remove multiple selected files from a group
     removeFilesFromGroup(groupIdx: number, fileItems: TempFileItem[]) {
         const group = this.groups[groupIdx];
@@ -934,7 +959,15 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
             // Return corresponding TempFolderItem
             const group = this.groups[element.groupIdx];
             if (group?.builtIn && this.builtInEditorGroups.length > 1) {
-                // File lives under an editor-group sub-node; find its group
+                // Extension Fix: Use stored subId (viewColumn) to find the correct EditorGroupItem
+                if (element.subId) {
+                    const viewColumn = parseInt(element.subId, 10);
+                    const editorGroup = this.builtInEditorGroups.find(eg => eg.viewColumn === viewColumn);
+                    if (editorGroup) {
+                        return new EditorGroupItem(editorGroup.label, editorGroup.viewColumn, element.groupIdx, group.id);
+                    }
+                }
+                // Fallback (e.g. if subId is missing)
                 const uriStr = element.uri.toString();
                 const editorGroup = this.builtInEditorGroups.find(eg => eg.files.includes(uriStr));
                 if (editorGroup) {
@@ -985,8 +1018,34 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Find a TempFileItem in the built-in group (Currently Open Files).
      * Returns the EXACT same instance that was rendered by getChildren() via the registry,
      * so that TreeView.reveal() can find the node.
+     * @param viewColumn Optional: specify which editor group to target (used for disambiguation)
      */
-    findInternalFileItem(uri: vscode.Uri): TempFileItem | undefined {
+    findInternalFileItem(uri: vscode.Uri, viewColumn?: number): TempFileItem | undefined {
+        const targetFsPath = uri.fsPath;
+        let matchedCustomItems: TempFileItem[] = [];
+
+        // 1. Group Isolation: Prioritize cached items in Custom Groups.
+        // This ensures if a user opens a file that belongs to a custom group, 
+        // the auto-reveal highlights the custom group instead of the built-in one.
+        for (const item of this.fileItemRegistry.values()) {
+            if (item instanceof TempFileItem) {
+                const isMatch = item.uri.toString() === uri.toString() ||
+                    (process.platform === 'win32' && this.pathsEqual(item.uri.fsPath, targetFsPath));
+
+                if (isMatch) {
+                    const group = this.groups[item.groupIdx];
+                    if (group && !group.builtIn) {
+                        matchedCustomItems.push(item);
+                    }
+                }
+            }
+        }
+
+        if (matchedCustomItems.length > 0) {
+            return matchedCustomItems[0];
+        }
+
+        // 2. Fallback: Search the built-in group (Currently Open Files)
         const builtInIdx = this.groups.findIndex(g => g.builtIn);
         if (builtInIdx === -1) return undefined;
         
@@ -994,7 +1053,6 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!group || !group.files) return undefined;
 
         // Fallback matching to handle URI casing/encoding differences on Windows
-        const targetFsPath = uri.fsPath;
         const matchedStr = group.files.find(f => {
             if (f === uri.toString()) return true;
             try {
@@ -1008,14 +1066,15 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
         // Construct the stable ID exactly as TempFileItem constructor does
         const matchedUri = vscode.Uri.parse(matchedStr);
-        const expectedId = `virtualTabsFile:${group.id}:${matchedUri.toString()}`;
+        const subId = (this.builtInEditorGroups.length > 1 && viewColumn !== undefined) ? viewColumn.toString() : undefined;
+        const expectedId = `virtualTabsFile:${group.id}${subId ? ':' + subId : ''}:${matchedUri.toString()}`;
         
         // First try: return cached exact instance from the registry
         const cached = this.fileItemRegistry.get(expectedId);
         if (cached) return cached;
 
         // Fallback: construct a new one (tree might not have expanded yet)
-        return new TempFileItem(matchedUri, builtInIdx, true, group.id);
+        return new TempFileItem(matchedUri, builtInIdx, true, group.id, subId);
     }
 
     getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
@@ -1121,7 +1180,8 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
 
             return editorGroup.files.map(uriStr => {
                 const uri = vscode.Uri.parse(uriStr);
-                const fileItem = new TempFileItem(uri, builtInIdx, true, builtIn.id);
+                // Fix Collision: Pass viewColumn as subId to keep ID unique across groups
+                const fileItem = new TempFileItem(uri, builtInIdx, true, builtIn.id, editorGroup.viewColumn.toString());
 
                 // Register for reveal() lookup
                 if (fileItem.id) {

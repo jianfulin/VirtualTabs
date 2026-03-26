@@ -27,14 +27,20 @@ export class TempFolderItem extends vscode.TreeItem {
     }
 }
 
-// File TreeItem in group
 export class TempFileItem extends vscode.TreeItem {
-    constructor(public readonly uri: vscode.Uri, public readonly groupIdx: number, isBuiltInGroup?: boolean, public readonly groupId?: string) {
+    constructor(
+        public readonly uri: vscode.Uri,
+        public readonly groupIdx: number,
+        isBuiltInGroup?: boolean,
+        public readonly groupId?: string,
+        public readonly subId?: string // Extension: Added to disambiguate identical files in different editor groups
+    ) {
         super(uri, vscode.TreeItemCollapsibleState.None);
         this.resourceUri = uri;
 
-        // Ensure stable ID for reliable TreeView.reveal matching
-        this.id = `virtualTabsFile:${groupId || groupIdx}:${uri.toString()}`;
+        // Ensure stable ID for reliable TreeView.reveal matching.
+        // If subId is provided (e.g. viewColumn), include it to prevent duplicate ID errors in VS Code.
+        this.id = `virtualTabsFile:${groupId || groupIdx}${subId ? ':' + subId : ''}:${uri.toString()}`;
 
         const ext = path.extname(uri.fsPath).toLowerCase();
         const isExecutable = ext === '.bat' || ext === '.exe';

@@ -76,7 +76,9 @@
 - **🤖 AI 上下文匯出** — 一鍵複製所有檔案為 LLM 就緒的上下文 `(v0.3.0)`
 - **▶️ 腳本執行** — `.bat` 與 `.exe` 檔案的 inline 執行按鈕 `(v0.3.2)`
 - **💾 便攜設定** — 設定儲存於 `.vscode/virtualTab.json`，方便團隊共享 `(v0.3.2)`
-- **🔌 AI Agent 整合 (MCP)** — 讓 AI 代理（Cursor、Copilot、Claude、Kiro、Antigravity）透過 Model Context Protocol 直接管理您的群組 `(v0.4.0)`
+- **🔌 AI Agent 整合 (MCP)** — 讓 AI 代理（Cursor、Copilot、Claude、Kiro、Antigravity）以程序化管理您的群組 `(v0.4.0)`
+- **🎯 自動追蹤與同步** — 自動定位作用中檔案並依編輯器分組同步 `(v0.4.5)`
+- **❌ 行內關閉按鈕** — 直接從 VirtualTabs 視圖關閉編輯器分頁 `(v0.4.6)`
 
 ### ⚡ 工作流程加速
 
@@ -90,14 +92,29 @@
 
 ## ⚡ 最新亮點
 
-**v0.4.0** 帶來完整的 AI Agent 整合 — 讓您的 AI 助手直接管理 VirtualTabs 群組：
+**v0.4.6** 引入了「關閉檔案」按鈕與架構優化：
 
-- 🔌 **MCP Server 整合** — 完整打包的 MCP 伺服器（`dist/mcp/index.js`）隨擴充功能一起提供，暴露 15+ 工具供 AI 代理建立群組、管理檔案、處理書籤與探索專案。
-- 🛡️ **Agent Skill 生成** — 一個指令即可為您的 AI 工具生成專屬技能檔案（Cursor `.mdc`，其餘工具則為 `SKILL.md`）。包含四層安全決策樹，並清楚標示 VirtualTabs 群組為**純虛擬結構** — 磁碟上不會有任何檔案被移動。
+- ❌ **行內關閉按鈕** — 懸停在任一檔案項目上時會出現 `$(close)` 圖示。無需切換面板，直接從 VirtualTabs 關閉分頁。
+- 🏗️ **編輯器分組叢集** — 當開啟多個分割視窗時，「Currently Open Files」群組現在會依據群組索引進行分類，提供完美的空間結構地圖。
+- 🔧 **唯一節點 ID** — 修正了核心 TreeView 衝突問題，確保即使同一個檔案在多個群組中開啟也能穩定運作。
+
+**v0.4.5** 帶來了「自動追蹤」與動態監聽：
+
+- 🎯 **自動追蹤作用中檔案** — 樹狀視圖會根據您目前編輯的檔案自動捲動並高亮對應項目。
+- ⚙️ **可配置行為** — 透過 `virtualTabs.autoRevealActiveFile` 設定開關此自動追蹤功能。
+
+---
+
+## 🤖 智慧 AI Agent 整合 (MCP)
+
+VirtualTabs 提供了完整的 AI Agent 整合 — 讓您的 AI 助手透過 **Model Context Protocol** 程序化地管理您的工作區群組：
+
+- 🔌 **MCP Server 整合** — 完整打包的 MCP 伺服器（`dist/mcp/index.js`）隨擴充功能一起提供，包含 15+ 工具供 AI 代理（Cursor, Copilot, Claude, Kiro, Antigravity）建立群組、管理檔案與探索專案。
+- 🛡️ **Agent Skill 生成** — 一個指令即可為您的 AI 工具生成專屬技能檔案（Cursor 為 `.mdc`，其餘為 `SKILL.md`）。包含四層安全決策樹，並清楚標示 VirtualTabs 群組為**純虛擬結構** — 磁碟上不會有任何檔案被移動。
 
   ![安全決策樹](docs/assets/safety_decision_tree_zh.png)
 - ⚙️ **MCP 設定面板** — 單擊即可取得適用於各 AI 工具的 MCP 伺服器設定 JSON。
-- 📦 **內建 CLI 後備方案** (`vt.bundle.js`) — 與每個生成的技能檔案一同提供的獨立 CLI，在 MCP 工具無法使用時作為最後手段。
+- 📦 **內建 CLI 後備方案** (`vt.bundle.js`) — 當 MCP 工具無法使用時，提供最後手段的獨立 CLI 編輯路徑。
 
 ### 在 IDE 中設置 MCP — 各 AI 工具的配置指南
 

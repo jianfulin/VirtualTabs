@@ -2,6 +2,24 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.4.6] - 2026-03-26
+
+### Added
+
+- **Inline "Close File" Button**: Added a standard `$(close)` (x) button to all file items in the VirtualTabs tree view. Users can now close editor tabs directly from the sidebar, matching the native VS Code "Open Editors" experience.
+- **Enhanced Duplicate ID Handling**: Improved `TempFileItem` ID generation by incorporating the `viewColumn` (Editor Group index) to ensure every item in the "Currently Open Files" group remains unique, even when the same file is open in multiple split editors.
+
+### Fixed
+
+- Resolved the "Element with id ... is already registered" error in the TreeView when working with multiple editor groups.
+
+## [0.4.5] - 2026-03-22
+
+### Added
+
+- **Auto Reveal Active File**: The VirtualTabs tree view now automatically scrolls to and highlights the currently active file in the "Currently Open Files" group. This behavior can be toggled via the `virtualTabs.autoRevealActiveFile` setting.
+- **Editor Group Clustering**: When multiple editor groups are open, the "Currently Open Files" group now hierarchically organizes tabs by their respective editor group (Group 1, Group 2, etc.), providing a clearer structural overview of the workspace.
+
 ## [0.4.0] - 2026-03-01
 
 ### Added

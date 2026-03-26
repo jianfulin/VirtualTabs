@@ -76,7 +76,9 @@ In the era of Copilot and LLMs, **precise context** is the key to high-quality r
 - **🤖 AI Context Export** — One-click copy all files as LLM-ready context `(v0.3.0)`
 - **▶️ Script Execution** — Inline run button for `.bat` and `.exe` files `(v0.3.2)`
 - **💾 Portable Config** — Settings saved to `.vscode/virtualTab.json` for team sharing `(v0.3.2)`
-- **🔌 AI Agent Integration (MCP)** — Connect AI agents (Cursor, Copilot, Claude, Kiro, Antigravity) to manage your groups programmatically via the Model Context Protocol `(v0.4.0)`
+- **🔌 AI Agent Integration (MCP)** — Connect AI agents (Cursor, Copilot, Claude, Kiro, Antigravity) to manage your groups programmatically `(v0.4.0)`
+- **🎯 Auto Reveal & Sync** — Automatically focus the active file and sync with editor groups `(v0.4.5)`
+- **❌ Inline Close Button** — Close editor tabs directly from the VirtualTabs view `(v0.4.6)`
 
 ### ⚡ Workflow Boosters
 
@@ -90,14 +92,29 @@ In the era of Copilot and LLMs, **precise context** is the key to high-quality r
 
 ## ⚡ Latest Highlights
 
-**v0.4.0** brings full AI agent integration — let your AI assistant manage VirtualTabs groups directly:
+**v0.4.6** introduces the **Close File** button and architectural refinements:
 
-- 🔌 **MCP Server Integration** — A fully bundled MCP server (`dist/mcp/index.js`) ships with the extension, exposing 15+ tools for AI agents to create groups, manage files, handle bookmarks, and explore the project.
-- 🛡️ **Agent Skill Generation** — One command generates a tailored skill file for your AI tool (Cursor `.mdc`, or `SKILL.md` for Copilot, Claude, Antigravity, Kiro). Includes a four-layer safety decision tree and a CRITICAL CONCEPT warning that VirtualTabs groups are *purely virtual* — no files are ever moved on disk.
+- ❌ **Inline Close Button** — A new `$(close)` icon appears on hover for every file item. Close editor tabs directly from VirtualTabs without switching panels.
+- 🏗️ **Editor Group Clustering** — When multiple editors are split, the "Currently Open Files" group now clusters tabs by their group index, providing a perfect structural map of your workspace.
+- 🔧 **Unique Node IDs** — Fixed a core TreeView collision issue, ensuring stable performance even when the same file is open in multiple groups.
+
+**v0.4.5** brought **Auto Reveal** and active tracking:
+
+- 🎯 **Auto Reveal Active File** — The tree view automatically scrolls to and highlights the file you are currently editing.
+- ⚙️ **Configurable Reveal** — Toggle the auto-reveal behavior via `virtualTabs.autoRevealActiveFile`.
+
+---
+
+## 🤖 Smart AI Agent Integration (MCP)
+
+VirtualTabs provides full AI agent integration — let your AI assistant manage your workspace groups programmatically via the **Model Context Protocol**:
+
+- 🔌 **MCP Server Integration** — A fully bundled MCP server (`dist/mcp/index.js`) ships with the extension, exposing 15+ tools for AI agents (Cursor, Copilot, Claude, Kiro, Antigravity) to create groups, manage files, and explore the project.
+- 🛡️ **Agent Skill Generation** — One command generates a tailored skill file for your AI tool (Cursor `.mdc`, or `SKILL.md` for others). Includes a four-layer safety decision tree and a **CRITICAL CONCEPT** warning that VirtualTabs groups are *purely virtual* — no files are ever moved on disk.
   
   ![Safety Decision Tree](docs/assets/safety_decision_tree_en.png)
 - ⚙️ **MCP Config Panel** — Get ready-to-paste MCP server configuration for your AI tool with a single click.
-- 📦 **Bundled CLI Fallback** (`vt.bundle.js`) — A self-contained CLI co-located with each generated skill file provides a last-resort editing path when MCP tools are unavailable.
+- 📦 **Bundled CLI Fallback** (`vt.bundle.js`) — A self-contained CLI provides a last-resort editing path when MCP tools are unavailable.
 
 ### MCP Configuration in Your IDE — Setup for Each AI Agent
 

@@ -76,6 +76,24 @@ export async function activate(context: vscode.ExtensionContext) {
     // NOTE: We intentionally do NOT call syncBuiltInGroup() here to avoid triggering
     // a tree data change event (which clears the registry) mid-reveal, causing a race condition.
     // Tab open/close events are handled by onDidChangeVisibleTextEditors below.
+    let lastSelectionUri: string | undefined;
+    let lastSelectionTime: number = 0;
+
+    // Track when the user clicks a file inside VirtualTabs
+    context.subscriptions.push(
+        treeView.onDidChangeSelection(e => {
+            if (e.selection.length > 0) {
+                const item = e.selection[0];
+                if (item && item.resourceUri) {
+                    lastSelectionUri = item.resourceUri.toString();
+                    lastSelectionTime = Date.now();
+                }
+            }
+        })
+    );
+
+    let revealTimeout: NodeJS.Timeout | undefined;
+
     context.subscriptions.push(
         vscode.window.onDidChangeActiveTextEditor(editor => {
             if (!editor || !editor.document) return;
@@ -86,18 +104,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
             const activeUri = editor.document.uri;
 
-            // Single-step reveal with expand:true.
-            // VS Code will call getParent() to traverse the ancestor chain and expand
-            // collapsed nodes automatically, then select the item.
-            const itemToReveal = provider.findInternalFileItem(activeUri);
-
-            if (itemToReveal) {
-                try {
-                    treeView.reveal(itemToReveal, { select: true, focus: false, expand: true });
-                } catch (e) {
-                    console.error('Tree reveal failed:', e);
-                }
+            // Context-Aware Reveal: If the active editor changed because the user JUST clicked 
+            // a file inside VirtualTabs (within 500ms), suppress the global reveal. 
+            // This prevents "Currently Open Files" group from jumping out and stealing focus.
+            if (Date.now() - lastSelectionTime < 500 && lastSelectionUri === activeUri.toString()) {
+                return;
             }
+
+            // Debounce the reveal to prevent flickering during fast tab switches
+            if (revealTimeout) {
+                clearTimeout(revealTimeout);
+            }
+
+            revealTimeout = setTimeout(() => {
+                // Pass viewColumn to disambiguate if the same file is open in multiple groups.
+                const itemToReveal = provider.findInternalFileItem(activeUri, editor.viewColumn);
+
+                if (itemToReveal) {
+                    try {
+                        // Non-Expanding Sync: expand: false ensures we don't force open collapsed groups.
+                        // It only highlights if the target folder is already expanded by the user.
+                        treeView.reveal(itemToReveal, { select: true, focus: false, expand: false });
+                    } catch (e) {
+                        console.error('Tree reveal failed:', e);
+                    }
+                }
+            }, 100);
         })
     );
 

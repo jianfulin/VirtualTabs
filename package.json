@@ -2,7 +2,7 @@
     "name": "virtual-tabs",
     "displayName": "%extension.displayName%",
     "description": "%extension.description%",
-    "version": "0.4.5",
+    "version": "0.4.6",
     "publisher": "winterdrive",
     "icon": "docs/assets/virtualtabs_icon_128.png",
     "categories": [
@@ -263,6 +263,11 @@
             {
                 "command": "virtualTabs.closeBookmarkContainer",
                 "title": "Close File"
+            },
+            {
+                "command": "virtualTabs.closeFile",
+                "title": "%command.closeFile.title%",
+                "icon": "$(close)"
             }
         ],
         "submenus": [
@@ -400,6 +405,11 @@
                     "group": "inline@0"
                 },
                 {
+                    "command": "virtualTabs.closeFile",
+                    "when": "view == virtualTabsView && (viewItem == virtualTabsFileBuiltIn || viewItem == virtualTabsFileBuiltInExec)",
+                    "group": "inline@1"
+                },
+                {
                     "command": "revealFileInOS",
                     "when": "view == virtualTabsView && ((virtualTabs:hasFileSelected && (viewItem == virtualTabsFileCustom || viewItem == virtualTabsFileBuiltIn || viewItem == virtualTabsFileCustomExec || viewItem == virtualTabsFileBuiltInExec)) || viewItem == virtualTabsBookmark)",
                     "group": "4_system@1"
@@ -407,7 +417,7 @@
                 {
                     "command": "virtualTabs.removeFileFromGroup",
                     "when": "view == virtualTabsView && (viewItem == virtualTabsFileCustom || viewItem == virtualTabsFileCustomExec)",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "virtualTabs.removeSelectedFilesFromGroup",
@@ -442,7 +452,7 @@
                 {
                     "command": "virtualTabs.removeBookmark",
                     "when": "view == virtualTabsView && viewItem == virtualTabsBookmark",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 }
             ],
             "editor/context": [
