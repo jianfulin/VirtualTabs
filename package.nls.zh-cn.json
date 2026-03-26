@@ -42,5 +42,6 @@
     "command.copyGroupContext.title": "复制 AI 上下文",
     "command.copyGroupPaths.title": "复制文件路径列表",
     "config.confirmBeforeDelete.description": "删除群组或文件前显示确认提示",
-    "config.autoRevealActiveFile.description": "在 Virtual Tabs 視圖中自動展開並高亮當前活動文件"
+    "config.autoRevealActiveFile.description": "在 Virtual Tabs 視圖中自動展開並高亮當前活動文件",
+    "command.closeFile.title": "关闭文件"
 }

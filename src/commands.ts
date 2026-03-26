@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'path';
 import { TempFoldersProvider } from './provider';
 import { TempFileItem, TempFolderItem, BookmarkItem } from './treeItems';
@@ -512,6 +512,13 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         const filesToClose = resolveTargetItems(item, provider);
         if (filesToClose.length === 0) return;
         await provider.closeSelectedFiles(filesToClose);
+    }));
+
+    // Handle closing a single file (inline action)
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.closeFile', async (item: TempFileItem) => {
+        if (item instanceof TempFileItem) {
+            await provider.closeFile(item);
+        }
     }));
     // Handle removing multiple selected files from group (or right-clicked file)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.removeSelectedFilesFromGroup', (item?: TempFileItem) => {

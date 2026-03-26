@@ -43,5 +43,6 @@
     "command.copyGroupPaths.title": "Copy File Paths",
     "command.copyName.title": "Copy Name",
     "config.confirmBeforeDelete.description": "Show confirmation dialog before deleting groups or files",
-    "config.autoRevealActiveFile.description": "Automatically reveal and highlight the active editor file in the Virtual Tabs view"
+    "config.autoRevealActiveFile.description": "Automatically reveal and highlight the active editor file in the Virtual Tabs view",
+    "command.closeFile.title": "Close File"
 }
