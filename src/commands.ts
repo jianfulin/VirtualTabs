@@ -1620,7 +1620,8 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
             let uris: vscode.Uri[] = [];
             if (item instanceof TempFolderItem) {
                 // Group: transmit all files in the group
-                uris = (item.group.files || []).map(f => vscode.Uri.parse(f));
+                const group = provider.groups[item.groupIdx];
+                uris = (group?.files || []).map((f: string) => vscode.Uri.parse(f));
             } else if (item instanceof TempFileItem) {
                 // File: transmit selected files, or the clicked file if none selected
                 const selected = provider.getSelectedFileItems();
