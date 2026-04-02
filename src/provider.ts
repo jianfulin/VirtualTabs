@@ -188,7 +188,14 @@ export class TempFoldersProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!this.groupManager) return false;
         try {
             const { groups: saved, version } = this.groupManager.loadGroups();
-            if (saved.length === 0) return false;
+            // If the user clears the config (empty array), treat it as a valid reset-to-default.
+            // Critical: still update loadedVersion so future writes don't hit optimistic-lock conflicts.
+            if (saved.length === 0) {
+                this.groups = [];
+                this.initBuiltInGroup();
+                this.loadedVersion = version;
+                return true;
+            }
 
             if (this.validateGroups(saved)) {
                 this.groups = this.fromStorageGroups(this.migrateGroups(saved));
