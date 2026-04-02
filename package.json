@@ -2,7 +2,7 @@
     "name": "virtual-tabs",
     "displayName": "%extension.displayName%",
     "description": "%extension.description%",
-    "version": "0.4.7",
+    "version": "0.4.8",
     "publisher": "winterdrive",
     "icon": "docs/assets/virtualtabs_icon_128.png",
     "categories": [
@@ -270,8 +270,18 @@
                 "icon": "$(close)"
             },
             {
-                "command": "virtualTabs.transmit",
-                "title": "%command.transmit.title%",
+                "command": "virtualTabs.sendTo",
+                "title": "%command.sendTo.title%",
+                "icon": "$(cloud-upload)"
+            },
+            {
+                "command": "virtualTabs.sendToIncludeGroupFolder",
+                "title": "%command.sendToIncludeGroupFolder.title%",
+                "icon": "$(cloud-upload)"
+            },
+            {
+                "command": "virtualTabs.sendToExcludeGroupFolder",
+                "title": "%command.sendToExcludeGroupFolder.title%",
                 "icon": "$(cloud-upload)"
             }
         ],
@@ -460,14 +470,19 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "virtualTabs.transmit",
+                    "command": "virtualTabs.sendTo",
                     "when": "view == virtualTabsView && virtualTabs:hasFileSelected && (viewItem == virtualTabsFileCustom || viewItem == virtualTabsFileBuiltIn || viewItem == virtualTabsFileCustomExec || viewItem == virtualTabsFileBuiltInExec)",
-                    "group": "9_transmit@1"
+                    "group": "9_sendTo@1"
                 },
                 {
-                    "command": "virtualTabs.transmit",
+                    "command": "virtualTabs.sendToIncludeGroupFolder",
                     "when": "view == virtualTabsView && (viewItem == virtualTabsGroup || viewItem == virtualTabsGroupBuiltIn)",
-                    "group": "9_transmit@1"
+                    "group": "9_sendTo@2"
+                },
+                {
+                    "command": "virtualTabs.sendToExcludeGroupFolder",
+                    "when": "view == virtualTabsView && (viewItem == virtualTabsGroup || viewItem == virtualTabsGroupBuiltIn)",
+                    "group": "9_sendTo@3"
                 }
             ],
             "editor/context": [

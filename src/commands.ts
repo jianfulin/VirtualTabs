@@ -8,7 +8,7 @@ import { TempGroup } from './types';
 import { executeWithConfirmation } from './util';
 import { SkillGenerator } from './mcp/SkillGenerator';
 import { McpConfigPanel } from './mcp/McpConfigPanel';
-import { TransmitManager } from './transmit';
+import { SendToManager } from './sendTo';
 
 // Global clipboard for VirtualTabs items
 let globalClipboardItems: (TempFileItem | TempFolderItem)[] = [];
@@ -1610,25 +1610,98 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         })
     );
 
-    // Transmit files to a configured target path
-    context.subscriptions.push(
-        vscode.commands.registerCommand('virtualTabs.transmit', async (item: TempFolderItem | TempFileItem | undefined) => {
-            const targets = TransmitManager.loadTransmitTargets();
-            const target = await TransmitManager.selectTarget(targets);
-            if (!target) return;
+    const sendToHandler = async (
+        item: TempFolderItem | TempFileItem | undefined,
+        includeGroupFolderOverride?: boolean
+    ) => {
+            const destFolders = await SendToManager.pickDestination(context);
+            if (!destFolders) { return; }
 
             let uris: vscode.Uri[] = [];
             if (item instanceof TempFolderItem) {
-                // Group: transmit all files in the group
-                const group = provider.groups[item.groupIdx];
-                uris = (group?.files || []).map((f: string) => vscode.Uri.parse(f));
+                const rootGroup = provider.groups[item.groupIdx];
+                if (!rootGroup) { return; }
+
+                const includeGroupFolder = includeGroupFolderOverride ?? true;
+
+                const sanitizeSegment = (seg: string): string => {
+                    const cleaned = seg.replace(/[<>:"/\\|?*]/g, '_').trim();
+                    return cleaned.replace(/[. ]+$/g, '') || '_';
+                };
+
+                const groupMap = new Map<string, TempGroup>();
+                for (const g of provider.groups) {
+                    if (g?.id) groupMap.set(g.id, g);
+                }
+
+                const buildRelativePathFromSelected = (group: TempGroup): string[] => {
+                    const names: string[] = [];
+                    let current: TempGroup | undefined = group;
+                    while (current) {
+                        names.push(sanitizeSegment(current.name));
+                        if (current.id === rootGroup.id) {
+                            break;
+                        }
+                        const parentId = current.parentGroupId;
+                        if (!parentId) break;
+                        current = groupMap.get(parentId);
+                    }
+                    const reversed = names.reverse();
+                    // Ensure selected group is the base even if parent linkage is broken.
+                    if (reversed.length === 0 || reversed[0] !== sanitizeSegment(rootGroup.name)) {
+                        return [sanitizeSegment(rootGroup.name)];
+                    }
+                    return reversed;
+                };
+
+                const itemsToSend: Array<{ uri: vscode.Uri; subdir: string }> = [];
+
+                const stack: TempGroup[] = [rootGroup];
+                while (stack.length > 0) {
+                    const g = stack.pop()!;
+                    const groupPathParts = buildRelativePathFromSelected(g);
+                    const relParts = includeGroupFolder ? groupPathParts : groupPathParts.slice(1);
+                    const subdir = relParts.length > 0 ? path.join(...relParts) : '';
+
+                    if (Array.isArray(g.files)) {
+                        for (const f of g.files) {
+                            itemsToSend.push({ uri: vscode.Uri.parse(f), subdir });
+                        }
+                    }
+
+                    for (const child of provider.groups) {
+                        if (child.parentGroupId === g.id) {
+                            stack.push(child);
+                        }
+                    }
+                }
+
+                await SendToManager.sendFilesWithSubdirs(itemsToSend, destFolders, destFolders.join(', '));
+                return;
             } else if (item instanceof TempFileItem) {
-                // File: transmit selected files, or the clicked file if none selected
                 const selected = provider.getSelectedFileItems();
                 uris = selected.length > 0 ? selected.map(s => s.uri) : [item.uri];
             }
 
-            await TransmitManager.transmitFiles(uris, target);
+            await SendToManager.sendFiles(uris, destFolders, destFolders.join(', '));
+    };
+
+    // Send files to a selected destination
+    context.subscriptions.push(
+        vscode.commands.registerCommand('virtualTabs.sendTo', async (item: TempFolderItem | TempFileItem | undefined) => {
+            await sendToHandler(item);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('virtualTabs.sendToIncludeGroupFolder', async (item: TempFolderItem | TempFileItem | undefined) => {
+            await sendToHandler(item, true);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('virtualTabs.sendToExcludeGroupFolder', async (item: TempFolderItem | TempFileItem | undefined) => {
+            await sendToHandler(item, false);
         })
     );
 }

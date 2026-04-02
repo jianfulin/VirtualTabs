@@ -110,10 +110,10 @@ export interface BookmarkInfo {
 }
 
 /**
- * Transmit Target (v0.5.0)
- * Defines a destination path for file transmission
+ * Send Target (v0.6.0)
+ * Defines a destination path for file send operation
  */
-export interface TransmitTarget {
+export interface SendTarget {
     /**
      * Display name for the target
      * Example: "Production Server", "Backup Folder"
@@ -121,15 +121,18 @@ export interface TransmitTarget {
     name: string;
 
     /**
-     * Destination path (absolute path or network path)
-     * Example: "D:\\Deploy", "\\\\server\\share"
+     * Destination path(s) (absolute path, network path, or array of paths)
+     * Example: "D:\\Deploy", "\\\\server\\share", ["D:\\Deploy", "\\\\server\\share"]
      */
-    path: string;
+    path: string | string[];
 }
+
+/** @deprecated Use SendTarget instead */
+export type TransmitTarget = SendTarget;
 
 /**
  * VirtualTab Configuration File Structure
- * Stored in .vscode/virtualTab.json or .vscode/transmitConfig.json
+ * Stored in .vscode/virtualTab.json or .vscode/sendTargets.json
  */
 export interface VirtualTabConfig {
     /**
@@ -138,7 +141,10 @@ export interface VirtualTabConfig {
     groups?: TempGroup[];
 
     /**
-     * Transmit targets for file transmission feature
+     * Send targets for file send feature
      */
-    transmitTargets?: TransmitTarget[];
+    sendTargets?: SendTarget[];
+
+    /** @deprecated Use sendTargets instead */
+    transmitTargets?: SendTarget[];
 }

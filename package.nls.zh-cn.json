@@ -44,5 +44,7 @@
     "config.confirmBeforeDelete.description": "删除群组或文件前显示确认提示",
     "config.autoRevealActiveFile.description": "在 Virtual Tabs 視圖中自動展開並高亮當前活動文件",
     "command.closeFile.title": "关闭文件",
-    "command.transmit.title": "传送文件"
+    "command.sendTo.title": "发送至...",
+    "command.sendToIncludeGroupFolder.title": "发送至...（包含群组文件夹）",
+    "command.sendToExcludeGroupFolder.title": "发送至...（不包含群组文件夹）"
 }

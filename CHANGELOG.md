@@ -2,6 +2,24 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.4.8] - 2026-04-03
+
+> **Special Thanks**: [@jianfulin](https://github.com/jianfulin) for the original idea and contribution! 🎉
+
+### Added
+
+- **Send to...**: Send selected files or an entire group to a destination folder via a Quick Pick UI.
+- **Configured Targets**: Load targets from `.vscode/sendTargets.json` and show them as `$(rocket)` entries in the Quick Pick.
+- **Multi-Path Targets**: A single target can define multiple destination paths and will send to all of them.
+- **Recent Destinations**: "Browse" destinations are remembered and shown under **Recent**.
+- **Group Structure Preserved**: Sending a group preserves its nested sub-group structure in the destination folder.
+- **Include/Exclude Group Folder**: Group send now offers two explicit commands to include or exclude the outer group folder.
+- **On-demand Template**: When no configured targets exist, the Quick Pick offers an option to create a `.vscode/sendTargets.json` template.
+
+### Fixed
+
+- Fixed a config reload edge case where clearing `.vscode/virtualTab.json` (empty array) could prevent future saves due to optimistic lock version mismatch.
+
 ## [0.4.6] - 2026-03-26
 
 ### Added
