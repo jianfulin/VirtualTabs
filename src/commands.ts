@@ -254,7 +254,13 @@ function resolveGroupItem(
 }
 
 // VirtualTabs command registration
-export function registerCommands(context: vscode.ExtensionContext, provider: TempFoldersProvider, getLastSelectedCustomFile: () => TempFileItem | undefined, stableMcpPath?: string): void {
+export function registerCommands(
+    context: vscode.ExtensionContext,
+    provider: TempFoldersProvider,
+    getLastSelectedCustomFile: () => TempFileItem | undefined,
+    stableMcpPath?: string,
+    treeView?: vscode.TreeView<vscode.TreeItem>
+): void {
     // Run executable file in terminal (explicit action via inline button)
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.runFile', async (target?: FileCommandTarget) => {
         const uri = getFileUri(target);
@@ -273,6 +279,42 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
     // Register add group command
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.addGroup', () => {
         provider.addGroup();
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.refresh', () => {
+        provider.reinitializeScopes();
+        const activeScope = provider.configScopes.find(scope => scope.id === provider.getActiveScopeId());
+        context.workspaceState.update('virtualTabs.activeScope', activeScope?.id);
+        if (treeView) {
+            treeView.description = activeScope ? provider.getScopeLabel(activeScope) : undefined;
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.selectScope', async () => {
+        const currentScopeId = provider.getActiveScopeId();
+        const items: Array<vscode.QuickPickItem & { scopeId?: string }> = [
+            {
+                label: 'All Scopes',
+                description: currentScopeId ? undefined : 'Current',
+                scopeId: undefined
+            },
+            ...provider.configScopes.map(scope => ({
+                label: provider.getScopeLabel(scope),
+                description: currentScopeId === scope.id ? 'Current' : undefined,
+                scopeId: scope.id
+            }))
+        ];
+
+        const picked = await vscode.window.showQuickPick(items, {
+            placeHolder: 'Select Virtual Tabs scope'
+        });
+        if (!picked) return;
+
+        provider.setActiveScopeId(picked.scopeId);
+        context.workspaceState.update('virtualTabs.activeScope', picked.scopeId);
+        if (treeView) {
+            treeView.description = picked.scopeId ? picked.label : undefined;
+        }
     }));
 
     // Register generate agent skill command
@@ -302,6 +344,55 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
         if (item && item.groupId) {
             provider.moveGroup(item.groupId, 'down');
         }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.moveScopeUp', (item: import('./treeItems').ScopeHeaderItem) => {
+        if (item && item.scope) {
+            provider.moveScope(item.scope.id, 'up');
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.moveScopeDown', (item: import('./treeItems').ScopeHeaderItem) => {
+        if (item && item.scope) {
+            provider.moveScope(item.scope.id, 'down');
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.clearScope', async (item: import('./treeItems').ScopeHeaderItem) => {
+        if (!item || !item.scope) return;
+
+        const label = provider.getScopeLabel(item.scope);
+        await executeWithConfirmation(
+            `Clear all groups in ${label}?`,
+            'Clear',
+            () => {
+                provider.clearScope(item.scope.id);
+            }
+        );
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.openScopeConfig', async (item: import('./treeItems').ScopeHeaderItem) => {
+        if (!item || !item.scope) return;
+
+        const configPath = provider.getScopeConfigPath(item.scope.id);
+        if (!configPath) return;
+
+        const uri = vscode.Uri.file(configPath);
+        try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Unable to open VirtualTabs config: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.revealScopeStorage', async (item: import('./treeItems').ScopeHeaderItem) => {
+        if (!item || !item.scope) return;
+
+        const configPath = provider.getScopeConfigPath(item.scope.id);
+        if (!configPath) return;
+
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(configPath));
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('virtualTabs.moveFileUp', (item?: TempFileItem) => {
@@ -1716,6 +1807,15 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Tem
     context.subscriptions.push(
         vscode.commands.registerCommand('virtualTabs.sendToExcludeGroupFolder', async (item: TempFolderItem | TempFileItem | undefined) => {
             await sendToHandler(item, false);
+        })
+    );
+
+    // 在指定 scope 建立新群組（多 scope 模式下的 inline '+' 按鈕）
+    context.subscriptions.push(
+        vscode.commands.registerCommand('virtualTabs.addGroupToScope', (item: import('./treeItems').ScopeHeaderItem) => {
+            if (!item || !item.scope) return;
+
+            provider.createGroupInScope(item.scope.id);
         })
     );
 }

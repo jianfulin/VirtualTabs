@@ -1,3 +1,5 @@
+import type * as vscode from 'vscode';
+
 // Sort criteria for files in a group
 export type SortCriteria =
     | 'none'        // Insertion order (default)
@@ -93,6 +95,12 @@ export interface TempGroup {
 
     // Reserved for future use
     metadata?: Record<string, unknown>;
+
+    /**
+     * [執行時專用，不持久化至磁碟]
+     * 指向此群組所屬的 ConfigScope.id
+     */
+    sourceScopeId?: string;
 }
 
 /**
@@ -147,4 +155,32 @@ export interface VirtualTabConfig {
 
     /** @deprecated Use sendTargets instead */
     transmitTargets?: SendTarget[];
+}
+
+/**
+ * 配置範圍類型
+ * - 'workspace': 對應 .code-workspace 檔案所在目錄
+ * - 'folder': 對應 workspaceFolders 中的各個資料夾
+ */
+export type ConfigScopeType = 'workspace' | 'folder';
+
+/**
+ * ConfigScope 介面
+ * 代表一個配置來源，包含其類型、URI 路徑及所屬群組
+ */
+export interface ConfigScope {
+    /** 唯一識別碼，使用 uri.toString() */
+    id: string;
+
+    /** 範圍類型 */
+    type: ConfigScopeType;
+
+    /** UI 顯示標籤 */
+    label: string;
+
+    /** 配置根目錄 URI（包含 .vscode/ 子目錄） */
+    uri: vscode.Uri;
+
+    /** 從此範圍載入的群組（執行時填充） */
+    groups: TempGroup[];
 }

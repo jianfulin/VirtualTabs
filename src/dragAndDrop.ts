@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { TempFoldersProvider } from './provider';
-import { TempFolderItem, TempFileItem } from './treeItems';
+import { TempFolderItem, TempFileItem, ScopeHeaderItem } from './treeItems';
 import { I18n } from './i18n';
 
 // Drag-and-drop controller, allows files to be dragged into groups AND groups to be nested
@@ -74,6 +74,18 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
                 await this.handleFileDrop(draggedFiles, targetGroup, target);
                 return;
             }
+            if (target instanceof ScopeHeaderItem) {
+                const groupIdx = this.provider.createGroupInScope(target.scope.id, [], false);
+                if (groupIdx !== undefined) {
+                    const group = this.provider.groups[groupIdx];
+                    await this.handleFileDrop(
+                        draggedFiles,
+                        new TempFolderItem(group.name, groupIdx, group.id, group.builtIn),
+                        target
+                    );
+                    return;
+                }
+            }
         }
 
         // Priority 2: Check for external file drag (uri-list)
@@ -82,7 +94,7 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
         const uriList = dataTransfer.get('text/uri-list');
         if (uriList && !draggedFiles) {
             const targetGroup = this.determineTargetGroup(target);
-            if (targetGroup) {
+            if (targetGroup || target instanceof ScopeHeaderItem) {
                 // Fix: support both \n and \r\n, trim whitespace and control characters from each URI
                 const uris = uriList.value.split(/\r?\n/).map((s: string) => s.trim()).filter(Boolean);
 
@@ -108,7 +120,11 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
                 }
 
                 if (allFileUris.length > 0) {
-                    this.provider.addFilesToGroup(targetGroup.groupIdx, allFileUris);
+                    if (targetGroup) {
+                        this.provider.addFilesToGroup(targetGroup.groupIdx, allFileUris);
+                    } else if (target instanceof ScopeHeaderItem) {
+                        this.provider.createGroupInScope(target.scope.id, allFileUris);
+                    }
                 }
                 return;
             }
@@ -262,15 +278,24 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
                     continue;
                 }
 
-                // Set parent relationship
-                sourceGroup.parentGroupId = destGroup.id;
+                if (!this.provider.moveGroupUnderGroup(sourceGroup.id, destGroup.id)) {
+                    continue;
+                }
                 hasChanges = true;
+            }
+            // Case 2: Drop onto a scope header (move to that scope's root)
+            else if (target instanceof ScopeHeaderItem) {
+                if (sourceGroup.builtIn) {
+                    vscode.window.showErrorMessage(I18n.getMessage('error.cannotNestBuiltIn'));
+                    continue;
+                }
+
+                this.provider.moveGroupToScope(sourceGroup.id, target.scope.id);
+                hasChanges = false;
             }
             // Case 2: Drop onto root (un-nest)
             else if (!target) {
-                // Remove parent relationship
-                delete sourceGroup.parentGroupId;
-                hasChanges = true;
+                hasChanges = this.provider.unnestGroup(sourceGroup.id) || hasChanges;
             }
         }
 

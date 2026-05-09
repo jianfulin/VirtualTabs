@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "outDir": "dist-test"
+  },
+  "include": ["src/test/**/*", "src/core/PathUtils.ts", "src/core/GroupManager.ts"]
+}

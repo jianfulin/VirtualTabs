@@ -2,6 +2,26 @@
 
 All notable changes to the "VirtualTabs" extension will be documented in this file.
 
+## [0.5.0] - 2026-05-10
+
+### Added
+
+- Added multi-root workspace scope support. VirtualTabs now detects workspace folders and shows one scope section per project so groups can stay attached to the correct repo in a multi-root workspace.
+- Added scope-level actions for adding groups, moving scopes, opening the scope config, revealing scope storage, and clearing a scope.
+- Added automated coverage for config scope discovery, path routing, tree aggregation, source scope IDs, and multi-root UI behavior.
+
+### Changed
+
+- Group creation and persistence now route through the selected/discovered scope instead of assuming a single workspace-level config.
+- Release packaging now excludes UI test output and local test runner cache from the VSIX.
+
+## [0.4.10] - 2026-04-17
+
+### Changed
+
+- Prepared internal config-scope groundwork for multi-root workspace support.
+- Expanded test infrastructure for unit, property, and VS Code UI tests.
+
 ## [0.4.9] - 2026-04-04
 
 > **Special Thanks**: [@onelaview](https://github.com/onelaview) for the original idea! 🎉

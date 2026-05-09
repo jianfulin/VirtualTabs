@@ -36,6 +36,14 @@ export class GroupManager {
     return this.workspaceRoot;
   }
 
+  getConfigPath(): string {
+    return this.configPath;
+  }
+
+  hasConfigFile(): boolean {
+    return fs.existsSync(this.configPath);
+  }
+
   /**
    * Load groups (optimistic locking).
    * Returns the version number (= file mtimeMs) for saveGroups to verify.

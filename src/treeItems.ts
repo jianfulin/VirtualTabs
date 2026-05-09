@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { VTBookmark } from './types';
+import { VTBookmark, ConfigScope } from './types';
 
 // Temporary folder TreeItem
 export class TempFolderItem extends vscode.TreeItem {
@@ -80,6 +80,42 @@ export class EditorGroupItem extends vscode.TreeItem {
         this.iconPath = new vscode.ThemeIcon('layout-panel-left');
         this.contextValue = 'virtualTabsEditorGroup';
         this.command = undefined;
+    }
+}
+
+/**
+ * ScopeHeaderItem
+ * TreeView 中代表配置範圍標頭的節點。
+ * - workspace scope：顯示 '🌐 Workspace Config'
+ * - folder scope：顯示 '📦 Project: [folderName]'
+ * 非互動式（無點擊動作）。
+ */
+export class ScopeHeaderItem extends vscode.TreeItem {
+    constructor(
+        public readonly scope: ConfigScope,
+        hasMultipleScopes: boolean = true,
+        expanded: boolean = true
+    ) {
+        const label = scope.type === 'workspace'
+            ? 'Workspace Config'
+            : `Project: ${path.basename(scope.uri.fsPath)}`;
+
+        super(label, expanded
+            ? vscode.TreeItemCollapsibleState.Expanded
+            : vscode.TreeItemCollapsibleState.Collapsed);
+
+        this.id = `virtualTabsScopeHeader:${scope.id}`;
+        this.command = undefined; // 非互動式
+        this.tooltip = label;
+
+        // 多 scope 時顯示 inline '+' 按鈕
+        this.contextValue = hasMultipleScopes
+            ? 'virtualTabsScopeHeaderWithAdd'
+            : 'virtualTabsScopeHeader';
+
+        this.iconPath = scope.type === 'workspace'
+            ? new vscode.ThemeIcon('globe', new vscode.ThemeColor('charts.blue'))
+            : new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.orange'));
     }
 }
 

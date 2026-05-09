@@ -1,0 +1,164 @@
+/**
+ * 單元測試：ConfigScopeDiscovery
+ *
+ * 測試各種工作區配置下的探索結果：
+ * - 單一資料夾工作區
+ * - 多根工作區（含 workspaceFile）
+ * - 無工作區資料夾
+ */
+
+import * as path from 'path';
+
+// ─── 模擬 vscode API ──────────────────────────────────────────────────────────
+
+interface MockUri {
+    fsPath: string;
+    toString(): string;
+}
+
+function createMockUri(fsPath: string): MockUri {
+    const normalized = fsPath.replace(/\\/g, '/');
+    return {
+        fsPath,
+        toString: () => `file://${normalized}`
+    };
+}
+
+function joinPath(uri: MockUri, ...segments: string[]): MockUri {
+    return createMockUri(path.join(uri.fsPath, ...segments));
+}
+
+// ─── 模擬 ConfigScopeDiscovery 邏輯 ──────────────────────────────────────────
+
+interface MockConfigScope {
+    id: string;
+    type: 'workspace' | 'folder';
+    label: string;
+    uri: MockUri;
+    groups: unknown[];
+}
+
+function discoverScopes(
+    workspaceFile: MockUri | undefined,
+    workspaceFolders: Array<{ uri: MockUri; name: string }> | undefined
+): MockConfigScope[] {
+    const scopes: MockConfigScope[] = [];
+
+    if (workspaceFile) {
+        const parentUri = joinPath(workspaceFile, '..');
+        scopes.push({
+            id: parentUri.toString(),
+            type: 'workspace',
+            label: 'Workspace',
+            uri: parentUri,
+            groups: []
+        });
+    }
+
+    if (workspaceFolders && workspaceFolders.length > 0) {
+        for (const folder of workspaceFolders) {
+            const folderName = path.basename(folder.uri.fsPath);
+            scopes.push({
+                id: folder.uri.toString(),
+                type: 'folder',
+                label: folderName,
+                uri: folder.uri,
+                groups: []
+            });
+        }
+    }
+
+    return scopes;
+}
+
+// ─── 測試 ─────────────────────────────────────────────────────────────────────
+
+describe('ConfigScopeDiscovery 單元測試', () => {
+    describe('單一資料夾工作區', () => {
+        test('應回傳一個 folder scope', () => {
+            const folders = [{ uri: createMockUri('/home/user/project'), name: 'project' }];
+            const scopes = discoverScopes(undefined, folders);
+
+            expect(scopes).toHaveLength(1);
+            expect(scopes[0].type).toBe('folder');
+        });
+
+        test('folder scope 的 uri 應等於資料夾的 uri', () => {
+            const folderUri = createMockUri('/home/user/project');
+            const folders = [{ uri: folderUri, name: 'project' }];
+            const scopes = discoverScopes(undefined, folders);
+
+            expect(scopes[0].uri.toString()).toBe(folderUri.toString());
+        });
+
+        test('folder scope 的 label 應為資料夾名稱', () => {
+            const folders = [{ uri: createMockUri('/home/user/my-project'), name: 'my-project' }];
+            const scopes = discoverScopes(undefined, folders);
+
+            expect(scopes[0].label).toBe('my-project');
+        });
+
+        test('folder scope 的 id 應等於 uri.toString()', () => {
+            const folderUri = createMockUri('/home/user/project');
+            const folders = [{ uri: folderUri, name: 'project' }];
+            const scopes = discoverScopes(undefined, folders);
+
+            expect(scopes[0].id).toBe(folderUri.toString());
+        });
+    });
+
+    describe('多根工作區', () => {
+        test('應回傳一個 workspace scope 加上多個 folder scope', () => {
+            const workspaceFile = createMockUri('/home/user/workspace/my.code-workspace');
+            const folders = [
+                { uri: createMockUri('/home/user/workspace/Repo-A'), name: 'Repo-A' },
+                { uri: createMockUri('/home/user/workspace/Repo-B'), name: 'Repo-B' }
+            ];
+            const scopes = discoverScopes(workspaceFile, folders);
+
+            expect(scopes).toHaveLength(3); // 1 workspace + 2 folder
+            expect(scopes[0].type).toBe('workspace');
+            expect(scopes[1].type).toBe('folder');
+            expect(scopes[2].type).toBe('folder');
+        });
+
+        test('workspace scope 的 uri 應為 workspaceFile 的父目錄', () => {
+            const workspaceFile = createMockUri('/home/user/workspace/my.code-workspace');
+            const scopes = discoverScopes(workspaceFile, []);
+
+            const expectedParent = joinPath(workspaceFile, '..');
+            expect(scopes[0].uri.toString()).toBe(expectedParent.toString());
+        });
+
+        test('workspace scope 的 label 應為 "Workspace"', () => {
+            const workspaceFile = createMockUri('/home/user/workspace/my.code-workspace');
+            const scopes = discoverScopes(workspaceFile, []);
+
+            expect(scopes[0].label).toBe('Workspace');
+        });
+
+        test('folder scope 的 label 應為各資料夾名稱', () => {
+            const workspaceFile = createMockUri('/home/user/workspace/my.code-workspace');
+            const folders = [
+                { uri: createMockUri('/home/user/workspace/Repo-A'), name: 'Repo-A' },
+                { uri: createMockUri('/home/user/workspace/Repo-B'), name: 'Repo-B' }
+            ];
+            const scopes = discoverScopes(workspaceFile, folders);
+
+            expect(scopes[1].label).toBe('Repo-A');
+            expect(scopes[2].label).toBe('Repo-B');
+        });
+    });
+
+    describe('無工作區資料夾', () => {
+        test('應回傳空陣列', () => {
+            const scopes = discoverScopes(undefined, undefined);
+            expect(scopes).toHaveLength(0);
+        });
+
+        test('空 workspaceFolders 陣列應回傳空陣列', () => {
+            const scopes = discoverScopes(undefined, []);
+            expect(scopes).toHaveLength(0);
+        });
+    });
+});

@@ -1,9 +1,11 @@
 /.vscode
+/.claude
 /dist
 /out
 /node_modules
 /package-lock.json
 /.idea
+/.vscode-test
 *.vsix
 docs/specs/**
 .kiro/**
@@ -17,3 +19,11 @@ use_case/**
 docs/research/**
 .cursor/rules/virtualtabs.mdc
 .cursor/rules/scripts/vt.bundle.js
+# Edo-Tensei local data
+.edo_tensei/
+
+# E2E test runner resources
+test-resources/
+!test-resources/
+!test-resources/multi-root/
+!test-resources/multi-root/**
