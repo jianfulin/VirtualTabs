@@ -3,7 +3,6 @@
 /dist
 /out
 /node_modules
-/package-lock.json
 /.idea
 /.vscode-test
 *.vsix
@@ -27,3 +26,12 @@ test-resources/
 !test-resources/
 !test-resources/multi-root/
 !test-resources/multi-root/**
+
+# AI Agents & Assistants
+/.gemini
+/.cline
+/.agent
+/.cursor
+
+# Testing
+/coverage

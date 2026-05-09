@@ -1,4 +1,4 @@
-﻿# Source code and build config
+# Source code and build config
 .gitignore
 src/**
 out/**
@@ -65,3 +65,6 @@ docs/assets/*1024X512.png
 .github/
 .kiro/
 .agent/
+.gemini/
+.cline/
+coverage/
