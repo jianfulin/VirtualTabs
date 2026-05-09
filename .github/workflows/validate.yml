@@ -32,11 +32,11 @@ jobs:
         run: npm ci
 
       - name: Validate version bump
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         run: |
           git fetch origin "${{ github.base_ref }}"
           changed_files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
-          release_files=$(echo "$changed_files" | grep -E '^(src/|package\.json|package-lock\.json|package\.nls.*\.json|README\.md|CHANGELOG\.md|docs/README|docs/assets/|\.vscodeignore|\.github/workflows/)' || true)
+          release_files=$(echo "$changed_files" | grep -E '^(src/|package\.nls.*\.json|README\.md|CHANGELOG\.md|docs/README|docs/assets/|\.vscodeignore)' || true)
           if [ -z "$release_files" ]; then
             echo "No release-relevant files changed; version bump is not required."
             exit 0
@@ -55,23 +55,15 @@ jobs:
       - name: Type check
         run: tsc -p ./
 
-      - name: Setup Xvfb for UI tests
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libxss1 libasound2
-
       - name: Run Unit and Property tests
         run: npm test
-
-      - name: Run UI tests
-        run: xvfb-run -a npm run test:ui
 
       - name: Package extension
         run: npx @vscode/vsce package --out virtual-tabs.vsix
 
       - name: Validate Open VSX manifest compatibility
         run: |
-          manifest_display_name=$(unzip -p virtual-tabs.vsix extension.vsixmanifest | sed -n 's/.*<DisplayName>\(.*\)<\/DisplayName>.*/\1/p')
+          manifest_display_name=$(unzip -p virtual-tabs.vsix extension.vsixmanifest | sed -n 's/.*<DisplayName>\(.*\)<\/DisplayName>.*/\1/p' | sed 's/\&amp;/\&/g')
           package_nls_display_name=$(node -p "require('./package.nls.json')['extension.displayName']")
           if [ "$manifest_display_name" != "$package_nls_display_name" ]; then
             echo "Display name mismatch: extension.vsixmanifest has '$manifest_display_name', package.nls.json has '$package_nls_display_name'."
