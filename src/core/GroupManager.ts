@@ -8,8 +8,11 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { TempGroup } from '../types.js';
+
+const EOL = os.EOL;
 
 /** Version conflict on concurrent write; caller should reload via loadGroups and retry */
 export class OptimisticLockError extends Error {
@@ -96,7 +99,7 @@ export class GroupManager {
 
       // Ensure config file exists
       if (!fs.existsSync(this.configPath)) {
-        fs.writeFileSync(this.configPath, '[]', 'utf8');
+        fs.writeFileSync(this.configPath, '[]' + EOL, 'utf8');
       }
 
       // Version conflict check: compare on-disk mtime
@@ -105,8 +108,7 @@ export class GroupManager {
         throw new OptimisticLockError();
       }
 
-      // Write config file
-      const content = JSON.stringify(groups, null, 2);
+      const content = JSON.stringify(groups, null, 2).replace(/\n/g, EOL);
       fs.writeFileSync(this.configPath, content, 'utf8');
 
       // Update cache
@@ -142,7 +144,7 @@ export class GroupManager {
       }
 
       const defaultGroups: TempGroup[] = [];
-      const content = JSON.stringify(defaultGroups, null, 2);
+      const content = JSON.stringify(defaultGroups, null, 2).replace(/\n/g, EOL);
       fs.writeFileSync(this.configPath, content, 'utf8');
 
       this.cachedGroups = defaultGroups;

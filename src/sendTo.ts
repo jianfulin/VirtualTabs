@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { SendTarget } from './types';
 import { I18n } from './i18n';
@@ -224,7 +225,7 @@ export class SendToManager {
             ]
         };
 
-        const content = JSON.stringify(template, null, 4) + '\n';
+        const content = JSON.stringify(template, null, 4).replace(/\n/g, os.EOL) + os.EOL;
         await vscode.workspace.fs.writeFile(targetFile, Buffer.from(content, 'utf8'));
 
         const doc = await vscode.workspace.openTextDocument(targetFile);
