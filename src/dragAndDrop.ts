@@ -359,6 +359,12 @@ export class TempFoldersDragAndDropController implements vscode.TreeDragAndDropC
                 if (type === vscode.FileType.File) {
                     files.push(entryUri);
                 } else if (type === vscode.FileType.Directory) {
+                    // Skip hidden directories (names starting with '.') such as .git, .github
+                    // to match VS Code's native tree view behavior.
+                    // Hidden files (e.g. .gitignore, .editorconfig) are still included.
+                    if (name.startsWith('.')) {
+                        continue;
+                    }
                     // Recursively get files from subdirectory
                     const subFiles = await this.getFilesInDirectoryRecursive(entryUri);
                     files.push(...subFiles);
