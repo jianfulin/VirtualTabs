@@ -1,9 +1,11 @@
 # VirtualTabs – VS Code 虛擬分頁與自定義檔案分組擴充套件
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/winterdrive.virtual-tabs)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/winterdrive.virtual-tabs)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/winterdrive.virtual-tabs?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
+[![Visual Studio Marketplace Version](https://vsmarketplacebadges.dev/version-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/winterdrive/virtual-tabs)](https://open-vsx.org/extension/winterdrive/virtual-tabs)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/winterdrive/virtual-tabs)](https://open-vsx.org/extension/winterdrive/virtual-tabs)
 [![AI-Ready Context](https://img.shields.io/badge/AI--Ready-LLMS.txt-blue?style=flat-square)](https://winterdrive.github.io/VirtualTabs/llms.txt)
+<!-- [![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs) -->
+<!-- [![VS Marketplace Downloads](https://vsmarketplacebadges.dev/downloads-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs) -->
 
 繁體中文 | **[English](./README.md)**
 
@@ -79,6 +81,7 @@
 - **AI 上下文匯出** — 一鍵複製所有檔案為 LLM 就緒的 Markdown 格式。
 - **便攜設定** — 設定儲存於 `.vscode/virtualTab.json`，方便團隊共享。
 - **AI Agent 整合 (MCP)** — 讓 AI 代理（Cursor、Claude 等）程序化管理您的群組。
+- **Multi-root 工作區範圍** — 在 multi-root 專案中依每個工作區資料夾分開保存群組。
 - **自動追蹤與同步** — 自動定位作用中檔案，並與原生編緝器分組同步。
 - **傳送至...** — 快速將選取的檔案或整個群組傳送到指定目的地。
 - **檔案重排序** — 支援拖放或鍵盤快捷鍵進行自定義手動排序。
@@ -86,7 +89,7 @@
 ### ⚡ 工作流程加速
 
 - **智慧複製選單** — 統一的檔案名稱、路徑與內容複製選項。
-- **目錄拖放** — 拖曳資料夾以遞迴加入所有內部檔案。
+- **目錄拖放** — 拖曳資料夾以遞迴加入內部檔案，並略過隱藏資料夾。
 - **剪貼簿操作** — 完整的檔案與群組剪下 / 複製 / 貼上支援。
 - **智慧組織** — 依副檔名、日期自動分組，或自訂排序準則。
 
@@ -97,11 +100,12 @@
 ### 📁 群組管理
 
 - **建立/重命名**：右鍵點擊面板或群組進行管理。
+- **Multi-root 範圍**：在 multi-root 工作區中，每個偵測到的專案都會顯示為獨立區段。可從範圍標題新增群組、開啟該範圍設定、顯示儲存位置，或只清空該範圍。
 - **子群組**：右鍵群組 → **新增子群組** (或將一個群組拖入另一群組)。
 - **自動同步**：內建的「目前開啟的檔案」群組會自動追蹤您的分頁。
 - **拖放操作**：
   - **檔案**：直接拖入群組。
-  - **資料夾**：拖入資料夾可遞迴加入所有檔案。
+  - **資料夾**：拖入資料夾可遞迴加入內部檔案；會略過名稱以 `.` 開頭的資料夾，但仍會加入 `.gitignore` 等 dotfile。
   - **多選**：按住 `Ctrl/Cmd` 選取多個檔案後一次拖入。
 
 ![拖放操作示範](docs/assets/drag_drop_demo.png)
@@ -149,7 +153,7 @@ VirtualTabs 透過 **Model Context Protocol (MCP)** 提供完整的 AI Agent 整
 1. **依任務分組，而非資料夾**：專注於功能開發而非路徑。
 2. **用書籤標記邏輯流程**：在代碼中的關鍵決策點標記書籤。
 3. **精簡 AI 上下文**：只將必要的檔案 (5-10 個) 放入專屬群組，提升 AI 回報準確率並節省 Token。
-4. **團隊共享**：提交 `.vscode/virtualTab.json` 檔案，讓團隊成員共享精選的專案視圖。
+4. **團隊共享**：提交各專案的 `.vscode/virtualTab.json` 檔案，讓團隊成員共享精選的專案視圖。
 
 ---
 
@@ -159,7 +163,7 @@ VirtualTabs 透過 **Model Context Protocol (MCP)** 提供完整的 AI Agent 整
 檢查擴充功能是否已啟用，且 VS Code 版本為 1.75+。查看活動列是否有 VirtualTabs 圖示。
 
 **Q：如何將資料夾加入群組？**  
-直接從檔案總管將資料夾拖曳到 VirtualTabs 面板中的群組，系統會自動遞迴掃描並加入檔案。
+直接從檔案總管將資料夾拖曳到 VirtualTabs 面板中的群組，系統會自動遞迴掃描並加入檔案，同時略過名稱以 `.` 開頭的隱藏資料夾；`.gitignore` 等 dotfile 仍會加入。
 
 **Q：我可以手動調整群組順序嗎？**  
 可以，右鍵點擊群組並使用 **Move Up/Down** 指令。

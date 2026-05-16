@@ -1,9 +1,16 @@
-﻿# Source code and build config
+# Source code and build config
+.gitignore
 src/**
+out/**
 tsconfig.json
+tsconfig.test.json
+tsconfig.test.ui.json
+jest.config.js
 package-lock.json
 *.map
+test-ui-output*.txt
 .vscode-test/**
+test-resources/
 
 # node_modules
 node_modules/
@@ -55,6 +62,10 @@ docs/assets/*1024X512.png
 
 .claude/
 .cursor/
+.edo_tensei/
 .github/
 .kiro/
 .agent/
+.gemini/
+.cline/
+coverage/

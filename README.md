@@ -1,9 +1,11 @@
 # VirtualTabs – VS Code Extension for Virtual Tabs & Custom File Grouping
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/winterdrive.virtual-tabs)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/winterdrive.virtual-tabs)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/winterdrive.virtual-tabs?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
+[![Visual Studio Marketplace Version](https://vsmarketplacebadges.dev/version-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/winterdrive/virtual-tabs)](https://open-vsx.org/extension/winterdrive/virtual-tabs)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/winterdrive/virtual-tabs)](https://open-vsx.org/extension/winterdrive/virtual-tabs)
 [![AI-Ready Context](https://img.shields.io/badge/AI--Ready-LLMS.txt-blue?style=flat-square)](https://winterdrive.github.io/VirtualTabs/llms.txt)
+<!-- [![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs) -->
+<!-- [![VS Marketplace Downloads](https://vsmarketplacebadges.dev/downloads-short/winterdrive.virtual-tabs.svg)](https://marketplace.visualstudio.com/items?itemName=winterdrive.virtual-tabs) -->
 
 [繁體中文](./README.zh-TW.md)
 
@@ -79,6 +81,7 @@ In MVC/MVVM or large-scale projects, related files are often scattered across de
 - **AI Context Export** — One-click copy all files as LLM-ready context.
 - **Portable Config** — Settings saved to `.vscode/virtualTab.json` for team sharing.
 - **AI Agent Integration (MCP)** — Connect AI agents (Cursor, Claude, etc.) to manage groups programmatically.
+- **Multi-Root Workspace Scopes** — Keep groups separated per workspace folder in multi-root projects.
 - **Auto Reveal & Sync** — Automatically focus active files and sync with native editor groups.
 - **Send to...** — Quickly send selected files or groups to pre-configured destinations.
 - **File Reordering** — Custom manual ordering via Drag & Drop or keyboard shortcuts.
@@ -86,7 +89,7 @@ In MVC/MVVM or large-scale projects, related files are often scattered across de
 ### ⚡ Workflow Boosters
 
 - **Smart Copy Menu** — Unified copy options for names, paths, and total file content.
-- **Directory Drag & Drop** — Drag folders to add all files recursively.
+- **Directory Drag & Drop** — Drag folders to add files recursively while skipping hidden directories.
 - **Clipboard Operations** — Full Cut/Copy/Paste support for files and groups.
 - **Smart Organization** — Auto-group by extension, date, or sort by various criteria.
 
@@ -97,11 +100,12 @@ In MVC/MVVM or large-scale projects, related files are often scattered across de
 ### 📁 Group Management
 
 - **Create/Rename**: Right-click panel or groups to manage.
+- **Multi-root scopes**: In a multi-root workspace, each detected project appears as its own section. Use the inline **Add Group** button on the scope header to create groups; the panel title `+` button is intentionally hidden in multi-root mode to keep group creation scoped to the correct project. In single-root mode the panel title button is still present.
 - **Sub-Groups**: Right-click a group → **Add Sub-Group** (or drag one group into another).
 - **Auto-Sync**: The built-in "Open Editors" group automatically tracks your native tabs.
 - **Drag & Drop**:
   - **Files**: Drag files from Explorer into groups.
-  - **Folders**: Drag folders to recursively add all files inside.
+  - **Folders**: Drag folders to recursively add files inside; directories whose names start with `.` are skipped, while dotfiles such as `.gitignore` are still included.
   - **Multi-select**: Hold `Ctrl/Cmd` to drag multiple files at once.
 
 ![Drag and Drop Demo](docs/assets/drag_drop_demo.png)
@@ -149,7 +153,7 @@ VirtualTabs provides full AI agent integration via the **Model Context Protocol 
 1. **Group by Task, Not Folder**: Think about the feature you're working on.
 2. **Use Bookmarks for Logic Flow**: Mark key decision points in your code.
 3. **Curate AI Context**: Group only necessary files (5-10) to maximize LLM accuracy and reduce token noise.
-4. **Share with Team**: Commit `.vscode/virtualTab.json` to share curated project views.
+4. **Share with Team**: Commit each project's `.vscode/virtualTab.json` to share curated project views.
 
 ---
 

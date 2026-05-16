@@ -1,8 +1,8 @@
 {
     "name": "virtual-tabs",
-    "displayName": "%extension.displayName%",
+    "displayName": "VirtualTabs - Virtual File Directories & AI context management",
     "description": "%extension.description%",
-    "version": "0.4.11",
+    "version": "0.5.8",
     "publisher": "winterdrive",
     "icon": "docs/assets/virtualtabs_icon_128.png",
     "categories": [
@@ -47,7 +47,7 @@
             "properties": {
                 "virtualTabs.autoRevealActiveFile": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "%config.autoRevealActiveFile.description%"
                 },
                 "virtualTabs.confirmBeforeDelete": {
@@ -113,9 +113,27 @@
                 "title": "%command.moveGroupDown.title%"
             },
             {
+                "command": "virtualTabs.moveScopeUp",
+                "title": "Move Scope Up"
+            },
+            {
+                "command": "virtualTabs.moveScopeDown",
+                "title": "Move Scope Down"
+            },
+            {
                 "command": "virtualTabs.refreshBuiltInGroup",
                 "title": "%command.refreshBuiltInGroup.title%",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "virtualTabs.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "virtualTabs.selectScope",
+                "title": "Select Scope",
+                "icon": "$(list-selection)"
             },
             {
                 "command": "virtualTabs.autoGroupByExt",
@@ -291,6 +309,26 @@
             {
                 "command": "virtualTabs.moveFileDown",
                 "title": "%command.moveFileDown.title%"
+            },
+            {
+                "command": "virtualTabs.addGroupToScope",
+                "title": "Add Group to Scope",
+                "icon": "$(add)"
+            },
+            {
+                "command": "virtualTabs.clearScope",
+                "title": "Clear Scope",
+                "icon": "$(clear-all)"
+            },
+            {
+                "command": "virtualTabs.openScopeConfig",
+                "title": "Open Config",
+                "icon": "$(json)"
+            },
+            {
+                "command": "virtualTabs.revealScopeStorage",
+                "title": "Reveal Storage",
+                "icon": "$(folder-opened)"
             }
         ],
         "submenus": [
@@ -316,19 +354,29 @@
             ],
             "view/title": [
                 {
-                    "command": "virtualTabs.showMcpConfig",
+                    "command": "virtualTabs.selectScope",
                     "when": "view == virtualTabsView",
                     "group": "navigation@1"
                 },
                 {
-                    "command": "virtualTabs.generateAgentSkill",
+                    "command": "virtualTabs.refresh",
                     "when": "view == virtualTabsView",
                     "group": "navigation@2"
                 },
                 {
                     "command": "virtualTabs.addGroup",
-                    "when": "view == virtualTabsView",
+                    "when": "view == virtualTabsView && !virtualTabs:hasMultipleScopes",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "virtualTabs.showMcpConfig",
+                    "when": "view == virtualTabsView",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "virtualTabs.generateAgentSkill",
+                    "when": "view == virtualTabsView",
+                    "group": "navigation@5"
                 }
             ],
             "view/item/context": [
@@ -396,6 +444,36 @@
                     "command": "virtualTabs.removeGroup",
                     "when": "view == virtualTabsView && viewItem == virtualTabsGroup",
                     "group": "inline@1"
+                },
+                {
+                    "command": "virtualTabs.addGroupToScope",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "virtualTabs.moveScopeUp",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "3_organize@1"
+                },
+                {
+                    "command": "virtualTabs.moveScopeDown",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "3_organize@2"
+                },
+                {
+                    "command": "virtualTabs.openScopeConfig",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "4_storage@1"
+                },
+                {
+                    "command": "virtualTabs.revealScopeStorage",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "4_storage@2"
+                },
+                {
+                    "command": "virtualTabs.clearScope",
+                    "when": "view == virtualTabsView && viewItem == virtualTabsScopeHeaderWithAdd",
+                    "group": "9_delete@1"
                 },
                 {
                     "command": "virtualTabs.refreshBuiltInGroup",
@@ -604,21 +682,37 @@
         ]
     },
     "scripts": {
-        "test": "tsc -p ./ && node --test dist/test/**/*.test.js",
+        "test": "tsc -p ./ && jest --runInBand",
+        "test:properties": "jest --runInBand src/test/properties",
+        "test:ui:setup": "extest setup-tests",
+        "test:ui": "tsc -p tsconfig.test.ui.json && extest setup-and-run \"out/test/ui/**/*.test.js\" -e \".vscode-test/extensions\" -r \"test-resources/multi-root/virtual-tabs.code-workspace\" -c 1.96.0",
         "vscode:prepublish": "npm run build:vt && npm run build:mcp && tsc -p ./",
         "build:mcp": "esbuild mcp-server/src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/mcp/index.js --external:vscode",
         "build:vt": "npx tsx scripts/bundle-vt.ts"
     },
     "devDependencies": {
+        "@modelcontextprotocol/sdk": "^1.27.1",
+        "@types/chai": "^4.3.20",
+        "@types/jest": "^30.0.0",
+        "@types/mocha": "^10.0.10",
         "@types/node": "^22.15.29",
         "@types/vscode": "^1.70.0",
-        "@modelcontextprotocol/sdk": "^1.27.1",
+        "chai": "^4.5.0",
         "esbuild": "^0.27.3",
+        "fast-check": "^4.6.0",
+        "jest": "^30.3.0",
+        "mocha": "^10.8.2",
+        "ts-jest": "^29.4.9",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
+        "vscode-extension-tester": "^8.14.1",
         "zod": "^4.3.6"
     },
     "dependencies": {
         "fast-glob": "^3.3.3"
+    },
+    "overrides": {
+        "serialize-javascript": "^7.0.5",
+        "path-to-regexp": "^8.4.2"
     }
 }

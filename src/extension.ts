@@ -1,11 +1,46 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { TempFoldersProvider } from './provider';
 import { TempFoldersDragAndDropController } from './dragAndDrop';
 import { registerCommands } from './commands';
 import { I18n } from './i18n';
-import { TempFolderItem, TempFileItem } from './treeItems';
+import { TempFolderItem, TempFileItem, ScopeHeaderItem } from './treeItems';
+import { ConfigScope } from './types';
+
+
+/**
+ * 為每個 ConfigScope 建立 FileSystemWatcher，監看 .vscode/virtualTab.json。
+ * 回傳所有建立的 watcher，以便後續 dispose。
+ */
+function setupWatchers(
+    scopes: ConfigScope[],
+    provider: TempFoldersProvider,
+    context: vscode.ExtensionContext
+): vscode.FileSystemWatcher[] {
+    const watchers: vscode.FileSystemWatcher[] = [];
+
+    for (const scope of scopes) {
+        const pattern = new vscode.RelativePattern(
+            vscode.Uri.file(provider.getConfigStorageRoot(scope)),
+            '.vscode/virtualTab.json'
+        );
+        const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+        const scopeId = scope.id;
+
+        watcher.onDidChange(() => provider.onExternalFileChange(scopeId));
+        watcher.onDidCreate(() => provider.onExternalFileChange(scopeId));
+        watcher.onDidDelete(() => {
+            provider.resetToDefault(scopeId);
+            const msg = I18n.getMessage('message.configDeleted') || 'VirtualTabs: Config file deleted. Groups reset to default.';
+            vscode.window.showWarningMessage(msg);
+        });
+
+        context.subscriptions.push(watcher);
+        watchers.push(watcher);
+    }
+
+    return watchers;
+}
 
 /**
  * 將 MCP server 部署到不受版本號影響的穩定路徑（globalStorageUri）。
@@ -20,7 +55,7 @@ async function deployMcpServer(context: vscode.ExtensionContext): Promise<string
     try {
         // 確保目標目錄存在
         await vscode.workspace.fs.createDirectory(targetDir);
-        
+
 
         // 讀取原始 MCP server 檔案內容
         const sourceContent = await vscode.workspace.fs.readFile(sourceFile);
@@ -62,6 +97,15 @@ export async function activate(context: vscode.ExtensionContext) {
     const expandedKey = 'virtualTabs.expandedGroups';
     const expandedIds = context.workspaceState.get<string[]>(expandedKey, []);
     provider.setExpandedGroupIds(expandedIds);
+    const expandedScopesKey = 'virtualTabs.expandedScopes';
+    const expandedScopeIds = context.workspaceState.get<string[]>(expandedScopesKey, []);
+    provider.setExpandedScopeIds(expandedScopeIds);
+    // 遷移舊的單選 storage key 到新的多選格式
+    const legacyActiveScopeKey = 'virtualTabs.activeScope';
+    const activeScopesKey = 'virtualTabs.activeScopes';
+    const legacyId = context.workspaceState.get<string | undefined>(legacyActiveScopeKey, undefined);
+    const storedIds = context.workspaceState.get<string[]>(activeScopesKey, legacyId ? [legacyId] : []);
+    provider.setActiveScopeIds(storedIds);
     const dragAndDropController = new TempFoldersDragAndDropController(provider);
 
     // Create tree view, enable multi-select
@@ -71,11 +115,18 @@ export async function activate(context: vscode.ExtensionContext) {
         canSelectMany: true
     });
     context.subscriptions.push(treeView);
+    treeView.description = provider.computeScopeDescription();
 
     // Pass the tree view to the provider for selection management
     provider.setTreeView(treeView);
 
     const updateExpandedState = (element: vscode.TreeItem, expanded: boolean) => {
+        if (element instanceof ScopeHeaderItem) {
+            const ids = provider.updateScopeExpanded(element.scope.id, expanded);
+            context.workspaceState.update(expandedScopesKey, ids);
+            return;
+        }
+
         if (!(element instanceof TempFolderItem)) {
             return;
         }
@@ -181,24 +232,18 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Register all commands
-    registerCommands(context, provider, () => lastSelectedCustomFile, stableMcpPath);
+    registerCommands(context, provider, () => lastSelectedCustomFile, stableMcpPath, treeView);
 
-    // Watch for .vscode/virtualTab.json changes
-    const configPath = vscode.workspace.workspaceFolders?.[0]
-        ? new vscode.RelativePattern(vscode.workspace.workspaceFolders[0], '.vscode/virtualTab.json')
-        : null;
+    // 為每個 ConfigScope 建立 FileSystemWatcher（多 scope 支援）
+    setupWatchers(provider.configScopes, provider, context);
 
-    if (configPath) {
-        const watcher = vscode.workspace.createFileSystemWatcher(configPath);
-        watcher.onDidChange(() => provider.onExternalFileChange());
-        watcher.onDidCreate(() => provider.onExternalFileChange());
-        watcher.onDidDelete(() => {
-            provider.resetToDefault();
-            const msg = I18n.getMessage('message.configDeleted') || 'VirtualTabs: Config file deleted. Groups reset to default.';
-            vscode.window.showWarningMessage(msg);
-        });
-        context.subscriptions.push(watcher);
-    }
+    // 監聽工作區資料夾動態變更（新增/移除 folder）
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeWorkspaceFolders(() => {
+            // 重新執行 discovery 並更新 provider 的 configScopes
+            provider.reinitializeScopes();
+        })
+    );
 }
 
 /**

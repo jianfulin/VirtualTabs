@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "Repo-A"
+    },
+    {
+      "path": "Repo-B"
+    }
+  ],
+  "settings": {
+    "workbench.startupEditor": "none"
+  }
+}
